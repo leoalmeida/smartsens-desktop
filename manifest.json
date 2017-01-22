@@ -1,0 +1,38 @@
+{
+  "name": "SmartSensors",
+  "description": "Gestão de Sensores",
+  "version": "0.0.1",
+  "manifest_version": 2,
+  "minimum_chrome_version": "29",
+  "icons": {
+    "16": "favicon.png",
+    "128": "favicon.png"
+  },
+  "oauth2": {
+    "client_id": "998257253122-uau713vd9m200j59akoo92ebcjbddhmp.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
+  "app": {
+    "browser_action": {
+      "default_icon": "favicon.png",
+      "default_title": "SmartSensors",
+      "default_popup": "credentials.html"
+    },
+    "background": {
+      "scripts": ["libs/firebase.js", "background.js", "script.js"]
+    }
+  },
+  "key": "-----BEGIN PUBLIC KEY-----/nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA54AIqK4op0+PnhfXikly/nCDug3t7sSoJwxAJ9zQIhFz0b4z9tw4kOR1iilwpiTxiAgBWw7NXRkwMGqWe0DcSU/nkXr9hN7H2HpBjwZgsRSzhgqSWExTKJ8nM9HB4ZYNUX2UQcZW8TV6gbwMT44Uqp4C/n2lRuV/Bi6GyXb3PesG9iYRGEhWK2CYiP+Zg1r2vqe4nakdIA6z7crtEUOreTPX+T/ngqYqXcfQFD80zKk76Xx221BW67o4K5H5REZzlX+7N7bRk0L5r4+94wfj1ojyM41S/n/rF7Z9AB8cl7XzJXg7hS+oOt1v2P2JMbInAFKA1fPD63erRvu2xgOUPjuq4a2R86/naQIDAQAB/n-----END PUBLIC KEY-----",
+  "permissions": [
+    "identity",
+    "nativeMessaging",
+    "notifications",
+    "usb",
+    "serial",
+    "https://guifragmentos.firebaseio.com/",
+    "<all_urls>"
+  ]
+}

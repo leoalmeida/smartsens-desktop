@@ -1,0 +1,22 @@
+{
+  "name": "smartSensors",
+  "main": "index.html",
+  "description": "Chrome smartSensors platform.",
+  "version": "0.0.1",
+  "keywords": "johnny-five node-webkit arduino",
+  "window": {
+    "title": "SmartSensors",
+    "icon": "./favicon.png",
+    "show": false,
+    "toolbar": false,
+    "frame": false,
+    "resizable": true,
+    "width": 800,
+    "height": 600,
+    "min_width": 800,
+    "min_height": 600
+  },
+  "scripts": {
+    "start": "./node_modules/.bin/nw --remote-debugging-port=9223"
+  }
+}

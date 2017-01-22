@@ -1,0 +1,280 @@
+.my-icon-button {
+    padding: 7px !important;
+    min-width: 0;
+    min-height: 0;
+    line-height: normal;
+}
+.angular-google-map-container {
+    width: 100%;
+    height: 600px;
+}
+/* fix for Twitter Bootstrap handling of responsive images */
+.angular-google-map img {
+    max-width: none;
+}
+
+.angular-google-map {
+    top: 80px;
+
+}
+
+.shrink {
+    font-size: 8px;
+}
+
+.true:hover {
+    background-color: lightgreen;
+}
+
+.false:hover {
+    background-color: lightpink;
+}
+
+.marker-labels {
+    color: red;
+    background-color: white;
+    font-family: "Lucida Grande", "Arial", sans-serif;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center;
+    border: 1px solid black;
+    white-space: nowrap;
+}
+
+/** FIX for Bootstrap and Google Maps Info window styes problem **/
+img[src*="gstatic.com/"], img[src*="googleapis.com/"] {
+    max-width: none;
+}
+
+
+/* uncomment this if you are using the <google-map> element instead of a div
+.angular-google-map {
+  display: block;
+  }*/
+
+.custom-info-window{
+    background: rgba(0,0,0,0.5);
+    color: white;
+    padding: 20px;
+    /*border: 1px solid white;*/
+    box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+    border-radius: 5px;
+    width: 200px;
+    margin-top: 15px;
+    margin-left: -130px;
+}
+.custom-info-window a{
+    color: white;
+    text-decoration: underline;
+}
+.custom-info-window:after
+{
+    content: '';
+    position: absolute;
+    border-style: solid;
+    border-width: 0 15px 15px;
+    border-color: rgba(0,0,0,0.5) transparent;
+    display: block;
+    width: 0;
+    z-index: 1;
+    top: -15px;
+    left: 118px;
+}
+
+
+.gridListDynamicTiles md-icon {
+    width: 50%;
+    height: 30%;
+}
+.gridListDynamicTiles md-icon svg {
+    -webkit-border-radius: 50%;
+    -moz-border-radius: 50%;
+    border-radius: 50%; }
+.gridListDynamicTiles .s64 {
+    font-size: 64px; }
+.gridListDynamicTiles .s32 {
+    font-size: 48px; }
+.gridListDynamicTiles md-icon.fa {
+    display: block;
+    padding-left: 0; }
+.gridListDynamicTiles md-icon.s32 span {
+    padding-left: 8px; }
+.gridListDynamicTiles md-grid-list {
+    margin: 8px; }
+.gridListDynamicTiles .lightgray {
+    background: #f5f5f5; }
+.gridListDynamicTiles .gray {
+    background: #f5f5f5; }
+.gridListDynamicTiles .darkgray {
+    background: #424242; }
+.gridListDynamicTiles .bluegray {
+    background: #B0BEC5; }
+.gridListDynamicTiles .lightgreen {
+    background: #b9f6ca; }
+.gridListDynamicTiles .green {
+    background: #8BC34A; }
+.gridListDynamicTiles .darkgreen {
+    background: #558B2F; }
+.gridListDynamicTiles .cyan {
+    background: #00BCD4; }
+.gridListDynamicTiles .teal {
+    background: #009688; }
+.gridListDynamicTiles .lime {
+    background: #CDDC39; }
+.gridListDynamicTiles .amber {
+    background: #FFC107; }
+.gridListDynamicTiles .amberAccent {
+    background: #FFD740; }
+.gridListDynamicTiles .lightyellow {
+    background: #ffff8d; }
+.gridListDynamicTiles .yellow {
+    background: #FFEB3B; }
+.gridListDynamicTiles .darkyellow {
+    background: #F9A825; }
+.gridListDynamicTiles .lightblue {
+      background: #40C4FF;}
+.gridListDynamicTiles .blue {
+    background: #2196F3; }
+.gridListDynamicTiles .darkBlue {
+    background: #1976D2; }
+.gridListDynamicTiles .deepBlue {
+    background: #1565C0; }
+.gridListDynamicTiles .lightPurple {
+    background: #8c9eff; }
+.gridListDynamicTiles .purple {
+    background: #b388ff; }
+.gridListDynamicTiles .darkpurple {
+    background: #6A1B9A; }
+.gridListDynamicTiles .lightred {
+    background: #ff8a80; }
+.gridListDynamicTiles .red {
+    background: #F44336; }
+.gridListDynamicTiles .darkred {
+    background: #D32F2F; }
+.gridListDynamicTiles .pink {
+    background: #ff80ab; }
+.gridListDynamicTiles md-grid-tile {
+    transition: all 400ms ease-out 50ms; }
+.gridListDynamicTiles md-grid-tile md-icon {
+    padding-bottom: 32px; }
+.gridListDynamicTiles md-grid-tile md-grid-tile-footer {
+    background: rgba(0, 0, 0, 0.5);
+    height: 64px; }
+.gridListDynamicTiles md-grid-tile-footer figcaption {
+    width: 100%; }
+.gridListDynamicTiles md-grid-tile-footer figcaption h3 {
+    margin: 0;
+    font-weight: 700;
+    width: 100%;
+    text-align: center; }
+
+.cardBasicUsage .card-media {
+    background-color: #999999; }
+
+@-webkit-keyframes backgroundScroll {
+    from {background-position: 0 0;}
+    to {background-position: -24em 0;}
+}
+
+@keyframes backgroundScroll {
+    from {background-position: 0 0;}
+    to {background-position: -24em 0;}
+}
+
+
+.card {
+    font-size: 1.4em;
+    font-weight: 200;
+
+    -webkit-box-shadow: 0 .25em .7em 0 rgba(207,207,207,1);
+    -moz-box-shadow: 0 .25em .7em 0 rgba(207,207,207,1);
+    box-shadow: 0 .25em .7em 0 rgba(207,207,207,1);
+}
+
+/*------PARAGRAPH------*/
+.card .alert-selected .alert-detail {
+    position: absolute;
+    color: transparent;
+    background: #3D6AA2;
+    font: 400 30px/187px 'Arvo', Helvetica, Arial, sans-serif;
+    text-align: center;
+    text-transform: uppercase;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.card .alert-selected:hover .alert-detail{
+    color: white;
+    background: rgba(0,0,0,0.7);
+    z-index: 1;
+}
+
+/*------IMAGES------*/
+.card .alert-selected .alert-content {
+    -webkit-transition: all 0.7s ease;
+    -moz-transition: all 0.7s ease;
+    -o-transition: all 0.7s ease;
+    -ms-transition: all 0.7s ease;
+    transition: all 0.7s ease;
+}
+
+.card:hover .alert-selected .alert-content{
+    -webkit-transform: scale(-1, 1);
+    -moz-transform: scale(-1, 1);
+    -o-transform: scale(-1, 1);
+    z-index: -3;
+    opacity: 0;
+}
+
+figure {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-position: center;
+    background-size: cover;
+    opacity: 1;
+    z-index: 1;
+
+    -webkit-transition: all 0.5s ease;
+    -moz-transition: all 0.5s ease;
+    -ms-transition: all 0.5s ease;
+    -o-transition: all 0.5s ease;
+    transition: all 0.5s ease;
+}
+
+.md-card-image {
+    width: 100%;
+    height: 50%;
+    color:#fff !important;
+    -webkit-animation: backgroundScroll 120s ease-in-out 5s infinite alternate;
+    animation: backgroundScroll 120s ease-in-out 5s infinite alternate;
+    background-size:130% 100%;
+    background-position:top;
+    background-attachment:fixed;
+}
+
+.alert-selected:hover figure {
+    opacity: 0.5;
+}
+
+.profilecard .card-media {
+    background-color: #999999; }
+
+.darkAlphaBackground {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.profileButton {
+    border: .3em solid rgba(255, 255, 255, 0.5);
+}
+
+.profileButton:not([disabled]):hover {
+    border: 0;
+}
+.profileButton[disabled] {
+    border: 0;
+}

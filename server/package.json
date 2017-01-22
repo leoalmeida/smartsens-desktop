@@ -1,0 +1,30 @@
+{
+  "name": "starter-feather",
+  "version": "0.0.1",
+  "description": "IoTReX for the Feather HUZZAH (ESP8266).",
+  "main": "relaytest.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "gulp build && node client.js"
+  },
+  "author": "a",
+  "license": "MIT",
+  "paths": {
+    "wwwroot": "./",
+    "dist": "./dist",
+    "client": "./",
+    "vendorjs": [
+        "../node_modules/socket.io-client/socket.io.js",
+        "../node_modules/jquery/dist/jquery.min.js",
+        "../node_modules/rxjs/bundles/Rx.umd.js",
+        "../node_modules/marbelous/dist/marbelous.js"
+    ],
+    "vendorcss": [
+        "../node_modules/marbelous/dist/marbelous.css "
+    ],
+    "css": "./app.css",
+    "js": [
+      "./client.js"
+    ]
+  }
+}
