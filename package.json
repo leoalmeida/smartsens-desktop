@@ -18,5 +18,11 @@
   },
   "scripts": {
     "start": "./node_modules/.bin/nw --remote-debugging-port=9223"
+  },
+  "dependencies": {
+    "etherport-client": "^0.1.2",
+    "firebase": "^3.6.6",
+    "johnny-five": "^0.10.6",
+    "nw": "^0.20.0-rc1"
   }
 }
