@@ -1,10 +1,10 @@
 // node-webkit
 //var win = nw.Window.get();
 let gui = require("nw.gui");
-let win = gui.Window.get();
+let win = nw.Window.get();
 
 // show devtools to debug
-//win.showDevTools();
+//nw.Window.get().showDevTools();
 
 // Extend application menu for Mac OS
 if (process.platform == "darwin") {
@@ -22,7 +22,7 @@ var config = {
     messagingSenderId: "998257253122"
 };
 
-let refSensors = refServerList = selectedPort = selectedServer = selectedConnType = "";
+let refSensors = "";
 let alerts = [];
 let db = "";
 let refAlerts = "";
@@ -46,10 +46,6 @@ function initApp() {
 
 // ****************************************
 
-//let userKey = "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
-//let serverID = "";
-let sensors = [], sensor, counter;
-
 //const io = require('socket.io')(httpServer);
 
 let $ = function (selector) {
@@ -62,12 +58,13 @@ let five = nw.require("johnny-five");
 //let board = new five.Board();
 let serialPortLib = nw.require("browser-serialport");
 // by default ESP8266 is a TCP Server so you'll need a TCP client transport for J5
-let VirtualSerialPort = nw.require('udp-serial').SerialPort;
-let Firmata = nw.require("firmata");
+//let VirtualSerialPort = nw.require('udp-serial').SerialPort;
+//let Firmata = nw.require("firmata");
 
-let board;
+let sensors = [], board, sensor, counter;
+let refServerList = selectedPort = selectedServer = selectedConnType = "";
 
-window.onload = function() {
+win.on ('loaded', function(){
     initApp();
 
     const userKeyCmp = $("#userKey"),
@@ -143,22 +140,22 @@ window.onload = function() {
         //refServerList = db.ref('sensors/public/'+ userKeyCmp.value );
 
         /*refServerList.once("value", function (snapshot) {
-            let servers = snapshot.val();
+         let servers = snapshot.val();
 
-            if (!snapshot.val()) {
-                showNativeNotification('./img/ic_error_24px.svg',  "Chave Inválida", 'A Chave Inserida não existe.', './sounds/arpeggio.mp3', './img/ic_error_24px.svg');
-                return;
-            }
-            for (server in servers) {
-                let serverID = "server" + cont;
-                serverIDCmp.innerHTML += "<option id='" + serverID + "'  value='" + server + "'>" + server + "</option>";
-                cont++;
-            }
+         if (!snapshot.val()) {
+         showNativeNotification('./img/ic_error_24px.svg',  "Chave Inválida", 'A Chave Inserida não existe.', './sounds/arpeggio.mp3', './img/ic_error_24px.svg');
+         return;
+         }
+         for (server in servers) {
+         let serverID = "server" + cont;
+         serverIDCmp.innerHTML += "<option id='" + serverID + "'  value='" + server + "'>" + server + "</option>";
+         cont++;
+         }
 
-            connTypeCmp.disabled = true;
-            serverIDCmp.disabled = false;
-            serialPorts.disabled = false;
-        });*/
+         connTypeCmp.disabled = true;
+         serverIDCmp.disabled = false;
+         serialPorts.disabled = false;
+         });*/
 
     });
     serverIDCmp.addEventListener('focusout', function (event) {
@@ -179,7 +176,8 @@ window.onload = function() {
         selectedPort = serialPorts.value;
     });
     btnClose.addEventListener('click', function (event) {
-        window.close();
+        //win.close();
+        gui.App.closeAllWindows();
     });
     btnClear.addEventListener('click', function (event) {
         logElement.innerHTML = "";
@@ -191,217 +189,14 @@ window.onload = function() {
         if (!userKey) { writeLog("Obrigatório escolher uma key"); return; }
         if (!serverID) { writeLog("Obrigatório escolher um server ID"); return; }
 
-        writeLog("Buscando Sensores ");
-        writeLog("--> Servidor: " + serverID);
-        writeLog('sensors/public/' + userKey + "/" + selectedServer);
+        writeLog("--> Servidor: " + selectedServer);
 
         refSensors = db.ref('sensors/public/' + userKey + "/" + selectedServer);
 
-        if (selectedConnType === "wifi") {
-            /*let hostVal = hostCmp.value;
-            let portVal = portCmp.value;
-            if (!hostVal) { writeLog("Obrigatório selecionar um ip válido"); return; }
-            if (!portVal) { writeLog("Obrigatório selecionar uma porta válida"); return; }
-            // update host to the IP address for your ESP board
-            //let selectedHost = "192.168.0.5";
-            //let selectedHostPort = "3030";
-            writeLog("--> Host: " + hostVal);
-            writeLog("--> Port: " + portVal);
-
-            let sp = new VirtualSerialPort({
-                host: hostVal,
-                type: 'udp4',
-                port: portVal
-            });
-
-            let io = new Firmata.Board(sp);
-
-            io.once('ready', function() {
-                console.log('IO Ready');
-                io.isReady = true;
-
-                var board = new five.Board({io: io, timeout: 1e5, repl: true});
-
-
-                let object;
-
-                board.on("ready", function () {
-                    btnStart.disabled = true;
-                    btnStop.disabled = false;
-
-                    writeLog("Conectando Arduino!!");
-                    writeLog(
-                        board.io.name + "-" +
-                        board.io.version.major + "." +
-                        board.io.version.minor
-                    );
-
-                    board.pinMode(1, board.MODES.OUTPUT);
-                    board.pinMode(2, board.MODES.OUTPUT);
-                    board.pinMode(3, board.MODES.INPUT);
-
-
-                    //led = new five.Led(2).strobe(1000);
-                    //leddev = new five.Led(16).strobe(500);
-
-                    object = new five.Relay(7);
-
-                    board.repl.inject({object: object});
-
-                    board.wait(1000, function () {
-                        // Turn it off...
-                        object.toggle();
-                        writeLog("Toggle");
-                    });
-
-                    btnReleStart.addEventListener('click', function (event) {
-                        object.toggle();
-
-                        writeLog("Toggle");
-
-                        if (object.isOn) {
-                            writeLog("Relé ligado");
-                        } else {
-                            writeLog("Relé desligado");
-                        }
-                    });
-
-                });
-                board.on("error", function (err) {
-                    if (err) {
-                        writeLog("Erro ao conectar na porta: " + selectedPort);
-                        writeLog("Erro: " + JSON.stringify(err));
-                    }
-                    setTimeout(function () {
-                        writeLog("Timeout ao conectar na porta: " + selectedPort);
-                    }, 5000);
-                });
-            });*/
-        } else{
-
-            writeLog("--> Porta: " + selectedPort);
-
-            board = new five.Board({
-                port: selectedPort
-            });
-
-            board.on("ready", function() {
-                btnStart.disabled = true;
-                btnStop.disabled = false;
-
-                writeLog("Conectando Arduino!!");
-
-                refSensors
-                    .on("child_added", function (snapshot){
-                        let snapitems = snapshot.val();
-                        //if (item[0].enabled) {
-
-                        //akeys = Object.keys(snapitems[serverID]);
-
-                        //for (let key = 0; key < akeys.length; key++) {
-
-                            let i = sensors.length;
-                            sensors.push(snapitems);
-
-                            //writeLog(JSON.stringify(snapitems[serverID][akeys[key]]));
-
-                            writeLog('Sensor [' + sensors[i].name + '] Encontrado!!');
-
-
-                            if (!alerts) alerts = [];
-
-                            alerts[sensors[i].key] = {
-                                active: true,
-                                enabled: true,
-                                severity: "green",
-                                lastUpdate: {
-                                    label: sensors[i].label
-                                },
-                                configurations: {
-                                    col: 1,
-                                    row: 1,
-                                    draggable: false,
-                                    icon: sensors[i].icon,
-                                    label: sensors[i].label,
-                                    localization: {image: sensors[i].image},
-                                    pin: {color: "yellow"},
-                                    sensors: [sensors[i].label],
-                                    type: sensors[i].type,
-                                    name: sensors[i].name,
-                                    owner: userKey,
-
-                                }
-                            };
-
-                            writeLog("Conectando sensor [" + sensors[i].name + "]");
-
-                            if (sensors[i].type == "motion") {
-                                let object = startMotion(sensors[i]);
-                                board.repl.inject({[object.id]: object});
-                            }
-                            else if (sensors[i].type == "led") {
-                                let object = startLed(sensors[i]);
-                                board.repl.inject({[object.id]: object});
-                            }
-                            else if (sensors[i].type == "hygrometer") {
-                                let object = startHygrometer(sensors[i]);
-                                board.repl.inject({[object.id]: object});
-                            }
-                            else if (sensors[i].type == "flow") {
-                                let object = startFlow(sensors[i], board);
-                                board.repl.inject({[object.id]: object});
-                            }
-                            else if (sensors[i].type == "thermometer") {
-                                let object = startThermometer(sensors[i]);
-                                board.repl.inject({[object.id]: object});
-                            }
-                            else if (sensors[i].type == "light") {
-                                let object = startLight(sensors[i]);
-                                board.repl.inject({[object.id]: object});
-                            }
-                            else if (sensors[i].type == "relay") {
-                                let object = startRelay(sensors[i])
-                                board.repl.inject({[object.id]: object});
-                            }
-                            else if (sensors[i].type == "multi") {
-                                startMulti(sensors[i]);
-                            }
-                            else if (sensors[i].type == "sensor") {
-                                startSensor(sensors[i]);
-                            }
-                            writeLog('Sensor [' + sensors[i].name + '] Conectado!!');
-                        //};
-
-                        //}else{
-                            //writeLog("Sensor [" + item.name + "] desligado.");
-                        //}
-                    });
-                refSensors
-                    .on("child_changed", function(snapshot) {
-                        let updatedItem = snapshot.val();
-
-                        //writeLog("Sensor " + updatedItem + " foi modificado");
-                        writeLog(JSON.stringify([updatedItem.key]));
-
-                        let object = board.repl.context[updatedItem.key];
-
-
-                        if (object.enabled != updatedItem.enabled) object.toggleit();
-
-                        writeLog("Sensor " + updatedItem.name + " foi modificado");
-                    });
-            });
-            board.on("error", function(err) {
-                if (err) {
-                    writeLog("Erro ao conectar na porta: " + selectedPort);
-                    writeLog("Erro: " + JSON.stringify(err));
-                }
-                setTimeout(function() {
-                    writeLog("Timeout ao conectar na porta: " + selectedPort);
-                }, 5000);
-            });
-
-        }
+        if (selectedConnType === "wifi")
+            startWifiBoard();
+        else
+            startUSBBoard();
 
         //btnStart.disabled = false;
         //btnStop.disabled = true;
@@ -425,14 +220,6 @@ window.onload = function() {
     //});
 
 
-    // bring window to front when open via terminal
-    win.focus();
-
-    // for nw-notify frameless windows
-    win.on('close', function() {
-        NW.App.quit();
-    });
-
     let serialPortList = function(serialPorts){
         serialPortLib.list(function(err, ports) {
             writeLog("Verificando portas!!");
@@ -450,6 +237,248 @@ window.onload = function() {
     };
 
     serialPortList(serialPorts);
+});
+
+let startUSBBoard = function(){
+    writeLog("--> Porta: " + selectedPort);
+
+    board = new five.Board({
+        port: selectedPort
+    });
+
+    board.on("ready", function() {
+        btnStart.disabled = true;
+        btnStop.disabled = false;
+
+        writeLog("Conectando Arduino!!");
+
+        refSensors
+            .on("child_added", function (snapshot){
+                let snapitems = snapshot.val();
+
+                var pin = new five.Pin(snapitems.configurations.pin);
+
+                pin.query(function(state) {
+                    process.stdout.write("Estado: " + JSON.stringify(state) + "\n");
+                });
+
+                if (snapitems.enabled) {
+
+                    //akeys = Object.keys(snapitems[serverID]);
+
+                    //for (let key = 0; key < akeys.length; key++) {
+
+                    let i = snapitems.key;
+                    sensors[snapitems.key] = snapitems;
+
+                    process.stdout.write('Sensor [' + sensors[i].name + '] Encontrado!!\n');
+
+                    if (!alerts) alerts = [];
+
+                    alerts[sensors[i].key] = {
+                        active: true,
+                        enabled: true,
+                        severity: "green",
+                        lastUpdate: {
+                            label: sensors[i].label
+                        },
+                        configurations: {
+                            col: 1,
+                            row: 1,
+                            draggable: false,
+                            icon: sensors[i].icon,
+                            label: sensors[i].label,
+                            localization: {image: sensors[i].image},
+                            pin: {color: "yellow"},
+                            sensors: [sensors[i].label],
+                            type: sensors[i].type,
+                            name: sensors[i].name,
+                            owner: userKey,
+
+                        }
+                    };
+
+                    writeLog("Conectando sensor [" + sensors[i].name + "]");
+
+                    if (sensors[i].type == "motion") {
+                        let object = startMotion(sensors[i]);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensors[i].type == "led") {
+                        let object = startLed(sensors[i]);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensors[i].type == "hygrometer") {
+                        let object = startHygrometer(sensors[i]);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensors[i].type == "flow") {
+                        let object = startFlow(sensors[i], board);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensors[i].type == "thermometer") {
+                        let object = startThermometer(sensors[i]);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensors[i].type == "light") {
+                        let object = startLight(sensors[i]);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensors[i].type == "relay") {
+                        let object = startRelay(sensors[i])
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensors[i].type == "multi") {
+                        startMulti(sensors[i]);
+                    }
+                    else if (sensors[i].type == "sensor") {
+                        let object = startSensor(sensors[i]);
+                        board.repl.inject({[object.id]: object});
+                    }
+
+                    if (!sensors[i].connected){
+                        if (sensors[i].configurations.style != "action")
+                            updateSensorStatus(sensors[i].key, sensors[i].connected);
+                    }else{
+                        if (sensors[i].configurations.style == "action")
+                            updateSensorStatus(sensors[i].key, sensors[i].connected);
+                    }
+
+                    writeLog('Sensor [' + sensors[i].name + '] Habilitado!!');
+                    //};
+
+                }else{
+                    process.stdout.write("Sensor [" + snapitems.name + "] bloqueado.");
+                }
+            });
+        refSensors
+            .on("child_changed", function(snapshot) {
+
+                let updatedItem = snapshot.val();
+
+                let object = sensors[updatedItem.key];
+
+                process.stdout.write("Sensor " + updatedItem.name + " foi modificado --> " + updatedItem.enabled + " | " + object.enabled + '\n');
+
+                if (object.enabled != updatedItem.enabled) object.toggleit();
+
+            });
+    });
+
+    board.on("fail", function(err) {
+        if (err) {
+            writeLog("Erro ao conectar na porta: " + selectedPort);
+            writeLog("Erro: " + JSON.stringify(err));
+        }
+        setTimeout(function() {
+            writeLog("Timeout ao conectar na porta: " + selectedPort);
+        }, 5000);
+    });
+
+    board.on("message", function(event) {
+        console.log("Received a %s message, from %s, reporting: %s", event.type, event.class, event.message);
+    });
+
+    board.loop(5000, function() {
+        process.stdout.write("Testando regras\n");
+    });
+
+    win.on('close', function() {
+        win.hide(); // Pretend to be closed already
+        process.stdout.write('Saindo\n');
+        if (sensors!='undefined')
+            for (let item of Object.keys(sensors)) {
+                process.stdout.write("Desconectando: " + item + '\n');
+                if (sensors[item].connected){
+                    updateSensorStatus(sensors[item].key, sensors[item].connected);
+                }
+            }
+
+        win.close(true);
+    });
+
+};
+
+let startWifiBoard = function(){
+    /*let hostVal = hostCmp.value;
+     let portVal = portCmp.value;
+     if (!hostVal) { writeLog("Obrigatório selecionar um ip válido"); return; }
+     if (!portVal) { writeLog("Obrigatório selecionar uma porta válida"); return; }
+     // update host to the IP address for your ESP board
+     //let selectedHost = "192.168.0.5";
+     //let selectedHostPort = "3030";
+     writeLog("--> Host: " + hostVal);
+     writeLog("--> Port: " + portVal);
+
+     let sp = new VirtualSerialPort({
+     host: hostVal,
+     type: 'udp4',
+     port: portVal
+     });
+
+     let io = new Firmata.Board(sp);
+
+     io.once('ready', function() {
+     console.log('IO Ready');
+     io.isReady = true;
+
+     var board = new five.Board({io: io, timeout: 1e5, repl: true});
+
+
+     let object;
+
+     board.on("ready", function () {
+     btnStart.disabled = true;
+     btnStop.disabled = false;
+
+     writeLog("Conectando Arduino!!");
+     writeLog(
+     board.io.name + "-" +
+     board.io.version.major + "." +
+     board.io.version.minor
+     );
+
+     board.pinMode(1, board.MODES.OUTPUT);
+     board.pinMode(2, board.MODES.OUTPUT);
+     board.pinMode(3, board.MODES.INPUT);
+
+
+     //led = new five.Led(2).strobe(1000);
+     //leddev = new five.Led(16).strobe(500);
+
+     object = new five.Relay(7);
+
+     board.repl.inject({object: object});
+
+     board.wait(1000, function () {
+     // Turn it off...
+     object.toggle();
+     writeLog("Toggle");
+     });
+
+     btnReleStart.addEventListener('click', function (event) {
+     object.toggle();
+
+     writeLog("Toggle");
+
+     if (object.isOn) {
+     writeLog("Relé ligado");
+     } else {
+     writeLog("Relé desligado");
+     }
+     });
+
+     });
+     board.on("error", function (err) {
+     if (err) {
+     writeLog("Erro ao conectar na porta: " + selectedPort);
+     writeLog("Erro: " + JSON.stringify(err));
+     }
+     setTimeout(function () {
+     writeLog("Timeout ao conectar na porta: " + selectedPort);
+     }, 5000);
+     });
+     });*/
 };
 
 let startMotion = function (sensor) {
@@ -457,13 +486,14 @@ let startMotion = function (sensor) {
         pin: sensor.configurations.pin,
         id: sensor.key
     });
-    object.active = sensor.enabled;
+    object.enabled = sensor.enabled;
+    object.connected = sensor.connected;
     object.key = sensor.key;
     object.lastReading = object.detectedMotion;
     object.action = sensor.configurations.action;
 
     object.toggleit = function () {
-        this.active ? false : true;
+        this.connected ? false : true;
     };
 
     object.on("calibrated", function () {
@@ -486,7 +516,7 @@ let startMotion = function (sensor) {
         writeLog("last: "+ object.lastReading);
         writeLog("enabled: "+ object.enabled);
 
-        if (!object.active | data.detectedMotion == object.lastReading) return;
+        if (!object.connected | data.detectedMotion == object.lastReading) return;
 
         object.lastReading = data.detectedMotion;
         writeLog("Sensor: " + object.key);
@@ -523,7 +553,8 @@ let startLed = function (sensor) {
         pin: sensor.configurations.pin,
         id: sensor.key
     });
-    object.active = sensor.enabled;
+    object.enabled = sensor.enabled;
+    object.connected = sensor.connected;
     object[this.isOn ? "off" : "on"]();
 
     object.toggleit = function () {
@@ -569,7 +600,8 @@ let startHygrometer = function (sensor) {
         threshold: sensor.configurations.threshold,
         id: sensor.key
     });
-    object.active = sensor.enabled;
+    object.enabled = sensor.enabled;
+    object.connected = sensor.connected;
     object.key = sensor.key;
     object.lastReading = 0;
     object.quantity = 0;
@@ -579,7 +611,7 @@ let startHygrometer = function (sensor) {
     object.action = sensor.configurations.action;
 
     object.toggleit = function () {
-        this.active ? false : true;
+        this.connected ? false : true;
     };
 
     //let sensorPower = new five.Pin(sensor.configurations.pin);
@@ -610,7 +642,7 @@ let startHygrometer = function (sensor) {
         object.scaledValue = object.scaleTo(0, 100);
         //object.value = value;
 
-        if (!object.active | object.scaledValue == object.lastReading) return;
+        if (!object.connected | object.scaledValue == object.lastReading) return;
 
         object.lastReading = object.scaledValue;
         object.quantity++;
@@ -676,11 +708,12 @@ let startThermometer = function (sensor) {
         },
         id: sensor.key
     });
-    object.active = sensor.enabled;
+    object.enabled = sensor.enabled;
+    object.connected = sensor.connected;
     object.key = sensor.key;
     object.lastReading = 0;
     object.toggleit = function () {
-        this.active ? false : true;
+        this.connected ? false : true;
     };
 
 
@@ -688,7 +721,7 @@ let startThermometer = function (sensor) {
 
         let celsius = Math.round(this.C);
 
-        if (!object.active | celsius == object.lastReading) return;
+        if (!object.connected | celsius == object.lastReading) return;
 
         object.lastReading = celsius;
 
@@ -732,17 +765,18 @@ let startThermometer = function (sensor) {
 };
 let startFlow = function (sensor, board) {
 
-    writeLog("Flow: " + sensor.key);
-    writeLog("-->freq: " + sensor.configurations.loop);
-    writeLog("-->pin: " + sensor.configurations.pin);
-    writeLog("-->max: " + sensor.configurations.maxval);
-    writeLog("-->unit: " + sensor.configurations.unit);
+    //writeLog("Flow: " + sensor.key);
+    //writeLog("-->freq: " + sensor.configurations.loop);
+    //writeLog("-->pin: " + sensor.configurations.pin);
+    //writeLog("-->max: " + sensor.configurations.maxval);
+    //writeLog("-->unit: " + sensor.configurations.unit);
 
-    let object = new five.Sensor.Digital({
-        id: sensor.configurations.key,
+    let object = new five.Sensor({
+        id: sensor.key,
         pin: sensor.configurations.pin
     });
-    object.active = sensor.enabled;
+    object.enabled = sensor.enabled;
+    object.connected = sensor.connected;
     object.key = sensor.key;
     object.lastReading = [{x: [], y: []}];
     object.pulses = 0;
@@ -752,7 +786,7 @@ let startFlow = function (sensor, board) {
     object.lastval = 0;
 
     object.toggleit = function () {
-        this.active ? false : true;
+        this.connected ? false : true;
     };
 
     /*object.on("change", function(value) {
@@ -816,7 +850,7 @@ let startFlow = function (sensor, board) {
         litres /= 7.5;
         litres /= 60;
         object.lastReading = {x:getDateString(), y:litres};
-        writeLog("Loop: " + JSON.stringify(object.lastReading));
+        process.stdout.write("Loop: " + JSON.stringify(object.lastReading) + "\n");
 
         if (litres == object.lastval) return;
 
@@ -826,7 +860,7 @@ let startFlow = function (sensor, board) {
 
     },sensor.configurations.loop);
 
-    board.repl.inject({sensor: object});
+    return object;
 };
 let startLight = function (sensor) {
 
@@ -836,17 +870,18 @@ let startLight = function (sensor) {
         threshold: sensor.configurations.threshold,
         id: sensor.key
     });
-    object.active = sensor.enabled;
+    object.enabled = sensor.enabled;
+    object.connected = sensor.connected;
     object.key = sensor.key;
     object.lastReading = 0;
 
     object.toggleit = function () {
-        this.active ? false : true;
+        this.connected ? false : true;
     };
 
     object.on("change", function() {
 
-        if (!object.active | object.level == object.lastReading ) return;
+        if (!object.connected | object.level == object.lastReading ) return;
 
         object.lastReading = object.level;
 
@@ -897,11 +932,12 @@ let startRelay = function (sensor) {
         type: sensor.configurations.type,
         id: sensor.key
     });
-    object.active = sensor.enabled;
+    object.enabled = sensor.enabled;
+    object.connected = sensor.connected;
     object[this.isOn ? "off" : "on"]();
 
     object.toggleit = function () {
-        this.active ? false : true;
+        this.connected ? false : true;
 
         this.toggle();
         writeLog("Toggle");
@@ -1029,17 +1065,18 @@ let startSensor = function (sensor) {
         threshold: sensor.configurations.threshold,
         id: sensor.key
     });
-    object.active = sensor.enabled;
+    object.enabled = sensor.enabled;
+    object.connected = sensor.connected;
     object.key = sensor.key;
     object.toggleit = function () {
-        this.active ? false : true;
+        this.connected ? false : true;
     };
 
     // Scale the sensor's data from 0-1023 to 0-10 and log changes
     object.on("change", function() {
         this.scaledReadingValue = this.scaleTo(0, 100);
 
-        if (!object.active | this.scaledReadingValue == object.lastReading) return;
+        if (!object.connected | this.scaledReadingValue == object.lastReading) return;
 
         alerts[object.key].lastUpdate = {
             date: Date.now(),
@@ -1097,6 +1134,11 @@ let updateReadings = function (reading, key) {
 
     refSensors.child(key+'/readings').update(reading);
 };
+
+let updateSensorStatus = function (key, status) {
+    let value = {"connected": (status ^= true)?true:false};
+    refSensors.child(key).update(value);
+}
 
 let updateActions = function (actions, origin, board) {
     writeLog("Executando ação:  " + actions);
@@ -1251,5 +1293,9 @@ let getDateString = function() {
     var datestr = new Date(time - 10800000).toISOString().replace(/T/, ' ').replace(/Z/, '');
     return datestr;
 }
+
+
+// bring window to front when open via terminal
+win.focus();
 
 win.show();
