@@ -23,6 +23,7 @@
     "etherport-client": "^0.1.2",
     "firebase": "^3.6.6",
     "johnny-five": "^0.10.6",
-    "nw": "^0.20.0-rc1"
+    "nw": "^0.20.0-rc1",
+    "nwjs-j5-fix": "^1.0.3"
   }
 }

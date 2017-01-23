@@ -13,6 +13,10 @@ if (process.platform == "darwin") {
     win.menu = menu;
 }
 
+let alerts=[], sensors=[], recipes=[], allSensors = {}, allActions = {}, sensor, counter;
+let refServerList, refAllSensors, selectedPort, selectedServer, selectedConnType;
+
+
 // ******** Initialize Firebase
 var config = {
     apiKey: "AIzaSyCCO7zMiZZTav3eDQlD6JnVoEcEVXkodns",
@@ -22,10 +26,7 @@ var config = {
     messagingSenderId: "998257253122"
 };
 
-let refSensors = "";
-let alerts = [];
-let db = "";
-let refAlerts = "";
+let refSensors, refAlerts, refRecipes, db;
 
 function initApp() {
     firebase.initializeApp(config);
@@ -35,12 +36,60 @@ function initApp() {
 
     refAlerts.once("value", function (snapshot) {
         alerts = snapshot.val() ;
-        console.log(snapshot);
     });
+
+    refRecipes = db.ref('recipes/public/');
+    refRecipes.on("child_added", function (snapshot) {
+        let item = snapshot.val() ;
+        //process.stdout.write("ValRecipe: " + JSON.stringify(item) + "\n");
+        //if (!recipes.enabled) return;
+        recipes.push(item);
+    });
+
+
+
+    refAllSensors = db.ref('sensors/');
+    refAllSensors.on("child_added", function (snapshot) {
+        let item = [];
+        item.push(snapshot.val());
+
+        //process.stdout.write("--> New Sensor: " + JSON.stringify(item) + "\n");
+
+        publicSensorFilter(allSensors, item, [{"column": "style", "value": "sensor", "extension": "configurations"},{"column": "enabled","value": true}]);
+        publicSensorFilter(allActions, item, [{"column": "style", "value": "action", "extension": "configurations"},{"column": "enabled","value": true}]);
+
+        //process.stdout.write("--> New Sensors: " + JSON.stringify(allSensors) + "\n");
+        //process.stdout.write("--> New Actions: " + JSON.stringify(allActions) + "\n");
+    });
+
+    /*refRecipes.on("child_changed", function (snapshot) {
+     let recipes = snapshot.val() ;
+     process.stdout.write(JSON.stringify(recipes));
+
+     if (!recipes.enabled) return;
+
+     let container = recipes.container[0];
+
+     let validation = "";
+     sensor container.key
+
+     for (let item  of container.rules){
+     validation += item.sign + item.value;
+     }
+
+     //sessionsRef.update(reading);
+     // writeLog("Leitura atualizada:  " + key);
+
+     let selection = key + "/" + selectedServer + "/" + actionSensor.key;
+     let actionSensor = firebase.database().ref('sensors/public/' + selection);
+
+
+     updateSensorStatus(actionSensor.key, actionSensor.connected);
+     });*/
 
     // Listen for auth state changes.
     firebase.auth().onAuthStateChanged(function(user) {
-        console.log('User state change detected from the Background script of the Chrome Extension:', user);
+        process.stdout.write('User state change detected from the Background script of the Chrome Extension:', user);
     });
 }
 
@@ -61,8 +110,7 @@ let serialPortLib = nw.require("browser-serialport");
 //let VirtualSerialPort = nw.require('udp-serial').SerialPort;
 //let Firmata = nw.require("firmata");
 
-let sensors = [], board, sensor, counter;
-let refServerList = selectedPort = selectedServer = selectedConnType = "";
+let board = new five.Board();
 
 win.on ('loaded', function(){
     initApp();
@@ -246,6 +294,8 @@ let startUSBBoard = function(){
         port: selectedPort
     });
 
+    process.stdout.write("--> Waiting \n");
+
     board.on("ready", function() {
         btnStart.disabled = true;
         btnStop.disabled = false;
@@ -325,7 +375,7 @@ let startUSBBoard = function(){
                         board.repl.inject({[object.id]: object});
                     }
                     else if (sensors[i].type == "relay") {
-                        let object = startRelay(sensors[i])
+                        let object = startRelay(sensors[i]);
                         board.repl.inject({[object.id]: object});
                     }
                     else if (sensors[i].type == "multi") {
@@ -338,18 +388,20 @@ let startUSBBoard = function(){
 
                     if (!sensors[i].connected){
                         if (sensors[i].configurations.style != "action")
-                            updateSensorStatus(sensors[i].key, sensors[i].connected);
+                            updateSensorStatus('public', userKeyCmp.value, selectedServer, sensors[i].key, (sensors[i].connected ^= true)?true:false);
                     }else{
                         if (sensors[i].configurations.style == "action")
-                            updateSensorStatus(sensors[i].key, sensors[i].connected);
+                            updateSensorStatus('public', userKeyCmp.value, selectedServer, sensors[i].key, (sensors[i].connected ^= true)?true:false);
                     }
 
                     writeLog('Sensor [' + sensors[i].name + '] Habilitado!!');
                     //};
 
                 }else{
-                    process.stdout.write("Sensor [" + snapitems.name + "] bloqueado.");
+                    process.stdout.write("Sensor [" + snapitems.name + "] bloqueado.\n");
                 }
+
+
             });
         refSensors
             .on("child_changed", function(snapshot) {
@@ -358,11 +410,21 @@ let startUSBBoard = function(){
 
                 let object = sensors[updatedItem.key];
 
-                process.stdout.write("Sensor " + updatedItem.name + " foi modificado --> " + updatedItem.enabled + " | " + object.enabled + '\n');
+                //process.stdout.write("Sensor " + updatedItem.name + " foi modificado --> " + updatedItem.enabled + " | " + object.enabled + '\n');
+                //process.stdout.write(" Estado --> " + updatedItem.enabled + " | " + object.enabled + '\n');
 
-                if (object.enabled != updatedItem.enabled) object.toggleit();
+                if (object.enabled != updatedItem.enabled) object.toggleit(updatedItem);
+                else sensors[updatedItem.key] = updatedItem;
 
             });
+
+/*        this.loop(5000, function() {
+            process.stdout.write("Testando regras\n");
+
+            updateActions();
+        });
+*/
+
     });
 
     board.on("fail", function(err) {
@@ -376,11 +438,7 @@ let startUSBBoard = function(){
     });
 
     board.on("message", function(event) {
-        console.log("Received a %s message, from %s, reporting: %s", event.type, event.class, event.message);
-    });
-
-    board.loop(5000, function() {
-        process.stdout.write("Testando regras\n");
+        process.stdout.write("Received a %s message, from %s, reporting: %s", event.type, event.class, event.message);
     });
 
     win.on('close', function() {
@@ -388,9 +446,10 @@ let startUSBBoard = function(){
         process.stdout.write('Saindo\n');
         if (sensors!='undefined')
             for (let item of Object.keys(sensors)) {
-                process.stdout.write("Desconectando: " + item + '\n');
+                //process.stdout.write('Sensor [' + sensors[item].key + '] Estado ' +sensors[item].connected+ '\n');
                 if (sensors[item].connected){
-                    updateSensorStatus(sensors[item].key, sensors[item].connected);
+                    process.stdout.write("Desconectando: " + item + '\n');
+                    updateSensorStatus('public', userKeyCmp.value, selectedServer, sensors[item].key, sensors[item].connected);
                 }
             }
 
@@ -419,7 +478,7 @@ let startWifiBoard = function(){
      let io = new Firmata.Board(sp);
 
      io.once('ready', function() {
-     console.log('IO Ready');
+     process.stdout.write('IO Ready');
      io.isReady = true;
 
      var board = new five.Board({io: io, timeout: 1e5, repl: true});
@@ -492,8 +551,9 @@ let startMotion = function (sensor) {
     object.lastReading = object.detectedMotion;
     object.action = sensor.configurations.action;
 
-    object.toggleit = function () {
-        this.connected ? false : true;
+    object.toggleit = function (updated) {
+        //this.connected ? false : true;
+        object = updated;
     };
 
     object.on("calibrated", function () {
@@ -525,7 +585,7 @@ let startMotion = function (sensor) {
         alerts[object.key].lastUpdate = {
             date: Date.now(),
             unit: "",
-            value: (data.detectedMotion?"!":""),
+            value: (data.detectedMotion?1:0),
             raw: data
         };
         writeLog("--> Atualizando alerta.");
@@ -543,8 +603,6 @@ let startMotion = function (sensor) {
             removeAlert("public", object.key);
         }
         updateReadings(alerts[object.key].lastUpdate, object.key);
-
-        updateActions(object.action, object.key, board);
     });
     return object;
 };
@@ -557,7 +615,8 @@ let startLed = function (sensor) {
     object.connected = sensor.connected;
     object[this.isOn ? "off" : "on"]();
 
-    object.toggleit = function () {
+    object.toggleit = function (updated) {
+        object = updated;
         this.toggle();
         if (this.isOn) {
             if (sensor.style == 0)
@@ -610,8 +669,9 @@ let startHygrometer = function (sensor) {
     object.maxval = sensor.configurations.maxval;
     object.action = sensor.configurations.action;
 
-    object.toggleit = function () {
-        this.connected ? false : true;
+    object.toggleit = function (updated) {
+        //this.connected ? false : true;
+        object = updated;
     };
 
     //let sensorPower = new five.Pin(sensor.configurations.pin);
@@ -712,8 +772,9 @@ let startThermometer = function (sensor) {
     object.connected = sensor.connected;
     object.key = sensor.key;
     object.lastReading = 0;
-    object.toggleit = function () {
-        this.connected ? false : true;
+    object.toggleit = function (updated) {
+        //this.connected ? false : true;
+        object = updated;
     };
 
 
@@ -785,8 +846,9 @@ let startFlow = function (sensor, board) {
     object.maxval = sensor.configurations.maxval;
     object.lastval = 0;
 
-    object.toggleit = function () {
-        this.connected ? false : true;
+    object.toggleit = function (updated) {
+        //this.connected ? false : true;
+        object = updated;
     };
 
     /*object.on("change", function(value) {
@@ -875,8 +937,9 @@ let startLight = function (sensor) {
     object.key = sensor.key;
     object.lastReading = 0;
 
-    object.toggleit = function () {
-        this.connected ? false : true;
+    object.toggleit = function (updated) {
+        //this.connected ? false : true;
+        object = updated;
     };
 
     object.on("change", function() {
@@ -936,9 +999,9 @@ let startRelay = function (sensor) {
     object.connected = sensor.connected;
     object[this.isOn ? "off" : "on"]();
 
-    object.toggleit = function () {
-        this.connected ? false : true;
-
+    object.toggleit = function (updated) {
+        //this.connected ? false : true;
+        object = updated;
         this.toggle();
         writeLog("Toggle");
 
@@ -1068,8 +1131,9 @@ let startSensor = function (sensor) {
     object.enabled = sensor.enabled;
     object.connected = sensor.connected;
     object.key = sensor.key;
-    object.toggleit = function () {
-        this.connected ? false : true;
+    object.toggleit = function (updated) {
+        //this.connected ? false : true;
+        object = updated;
     };
 
     // Scale the sensor's data from 0-1023 to 0-10 and log changes
@@ -1135,18 +1199,68 @@ let updateReadings = function (reading, key) {
     refSensors.child(key+'/readings').update(reading);
 };
 
-let updateSensorStatus = function (key, status) {
-    let value = {"connected": (status ^= true)?true:false};
-    refSensors.child(key).update(value);
-}
+let updateSensorStatus = function (access, owner, server, key, status) {
+    let value = {"connected": status};
+    process.stdout.write("Estado: " + value.connected + '\n');
+    refAllSensors.child(access + '/'+ owner + '/'+ server + '/'+ key).update(value);
+};
 
-let updateActions = function (actions, origin, board) {
-    writeLog("Executando ação:  " + actions);
+let updateActions = function () {
+    writeLog("Executando ação:");
 
-    let object = board.repl.context[actions];
+    for (let recipe of recipes) {
 
-    object.toggleit();
+        if (!recipe.enabled) continue;
 
+        let action = "";
+        let performAction = false;
+
+        recipe_block: for (let item  of recipe.container) {
+                if (item.type = "sensor") {
+                    for (let rule  of item.rules) {
+                        let sensor = allSensors[rule.evaluatedObjectKey]
+                        process.stdout.write(JSON.stringify(sensor)+ '\n');
+
+                        if (!sensor.enabled | !sensor.connected) continue recipe_block;
+                        process.stdout.write(JSON.stringify(rule));
+                        let evaluatedRead = sensor.readings[rule.evaluatedAttribute];
+                        if (evaluatedRead == rule.expectedResult) {
+                            performAction = true;
+                        }
+                        else if (!rule.logicalOperator || rule.logicalOperator == "&&") {
+                            performAction = false;
+                            break;
+                        }
+                    }
+                } else if (item.type = "container") {
+                    continue;
+                } else if (item.type = "action") {
+                    for (let rule  of item.rules) {
+                        if (performAction != rule.result) continue;
+                        else {
+                            recipe.severity = rule.alert.severity;
+                            if (rule.alert.activate) {
+                                recipe.startDate = Date.now();
+                                updateAlert("public", recipe.key, rule.alert)
+                            } else {
+                                recipe.releaseDate = Date.now();
+                                removeAlert("public", recipe.key);
+                            }
+                            for (let action  of rule.actions) {
+                                let sensor = allSensors[action.key];
+                                updateSensorStatus("public", sensor.owner, sensor.connectedServer, action.key, action.connected)
+                            }
+                        }
+                    }
+                }
+        }
+
+        //sessionsRef.update(reading);
+        // writeLog("Leitura atualizada:  " + key);
+        // let selection = key + "/" + selectedServer + "/" + actionSensor.key;
+        // let actionSensor = firebase.database().ref('sensors/public/' + selection);
+        //updateSensorStatus(actionSensor.key, actionSensor.connected);
+    };
 };
 
 //Socket connection handler
@@ -1294,6 +1408,35 @@ let getDateString = function() {
     return datestr;
 }
 
+let publicSensorFilter = function (output, arr, list) {
+    var akeys, bkeys, ckeys;
+    for (let item of arr) {
+        akeys = Object.keys(item);
+        for (let akey of akeys) {
+            bkeys = Object.keys(item[akey]);
+            for (let bkey of bkeys) {
+                ckeys = Object.keys(item[akey][bkey]);
+                for (let ckey of ckeys) {
+                    var push = false;
+                    for (let ind of list) {
+                        if (ind.extension) {
+                            //process.stdout.write("A: " + item[akey][bkey][ckey][ind.extension][ind.column] + " B: " + ind.value + "\n");
+                            push = (item[akey][bkey][ckey][ind.extension][ind.column] == ind.value);
+                        }else{
+                            //process.stdout.write("A: " + item[akey][bkey][ckey][ind.column] + " B: " + ind.value + "\n");
+                            push = (item[akey][bkey][ckey][ind.column] == ind.value);
+                        }
+                        if (!push) break;
+                    }
+                    if (push) {
+                        //process.stdout.write("Item: " + ckey+ "\n");
+                        output[ckey] = item[akey][bkey][ckey];
+                    }
+                }
+            }
+        }
+    }
+};
 
 // bring window to front when open via terminal
 win.focus();
