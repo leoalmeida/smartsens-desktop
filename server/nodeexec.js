@@ -1,7 +1,7 @@
 let firebase = require("firebase");
 let five = require("johnny-five");
 //let board = new five.Board();
-let serialPortLib = require("browser-serialport");
+//let serialPortLib = require("browser-serialport");
 // by default ESP8266 is a TCP Server so you'll need a TCP client transport for J5
 //let VirtualSerialPort = nw.require('udp-serial').SerialPort;
 //let Firmata = nw.require("firmata");
@@ -58,10 +58,10 @@ firebase.auth().onAuthStateChanged(function(user) {
     console.log('User state change detected from the Background script of the Chrome Extension:', user);
 });
 
-let userKey = "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
-selectedServer = "Casa";
+let userKey = process.argv.key | "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
+selectedServer = process.argv.server | "Casa";
 
-refSensors = db.ref("sensors/public/mw7uFCeEwcTrXrgHdvRKxE5mKAJ2/Casa");
+refSensors = db.ref("sensors/public/"+ userKey + "/" + selectedServer);
 
 board = new five.Board({
     timeout: 1e5
@@ -76,12 +76,6 @@ board.on("ready", function() {
     refSensors
         .on("child_added", function (snapshot){
             let snapitems = snapshot.val();
-
-            /*var pin = new five.Pin(snapitems.configurations.pin);
-
-             pin.query(function(state) {
-             console.log("Estado: " + JSON.stringify(state) + "\n");
-             });*/
 
             if (snapitems.enabled) {
 
@@ -175,9 +169,7 @@ board.on("ready", function() {
         });
     refSensors
         .on("child_changed", function(snapshot) {
-
             let updatedItem = snapshot.val();
-
 
             let obj = board.repl.context[updatedItem.key];
 
@@ -197,7 +189,7 @@ board.on("ready", function() {
     board.loop(5000, function() {
         console.log("Testando regras\n");
 
-     //updateActions();
+        updateActions();
     });
 
     board.on('exit', function() {
@@ -207,7 +199,7 @@ board.on("ready", function() {
                 //console.log('Sensor [' + sensors[item].key + '] Estado ' +sensors[item].connected+ '\n');
                 if (sensors[item].connected){
                     console.log("Desconectando: " + item + '\n');
-                    updateSensorStatus('public', userKey, selectedServer, item, sensors[item].connected);
+                    updateSensorStatus('public', userKey, selectedServer, sensors[item].key, sensors[item].connected);
                 }
             }
     });
@@ -808,10 +800,11 @@ let updateActions = function () {
             if (item.type = "sensor") {
                 for (let rule  of item.rules) {
                     let sensor = allSensors[rule.evaluatedObjectKey]
-                    console.log(JSON.stringify(sensor)+ '\n');
+                    process.stdout.write(rule.evaluatedObjectKey+ '\n');
+                    process.stdout.write(JSON.stringify(sensor)+ '\n');
 
-                    if (!sensor.enabled | !sensor.connected) continue recipe_block;
-                    console.log(JSON.stringify(rule));
+                    if (!sensor || !sensor.connected) continue recipe_block;
+                    process.stdout.write(JSON.stringify(rule));
                     let evaluatedRead = sensor.readings[rule.evaluatedAttribute];
                     if (evaluatedRead == rule.expectedResult) {
                         performAction = true;
