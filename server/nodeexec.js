@@ -1,10 +1,5 @@
 let firebase = require("firebase");
 let five = require("johnny-five");
-//let board = new five.Board();
-//let serialPortLib = require("browser-serialport");
-// by default ESP8266 is a TCP Server so you'll need a TCP client transport for J5
-//let VirtualSerialPort = nw.require('udp-serial').SerialPort;
-//let Firmata = nw.require("firmata");
 
 let board, sensor;
 
@@ -31,35 +26,13 @@ refAlerts.once("value", function (snapshot) {
     alerts = snapshot.val() ;
 });
 
-refRecipes = db.ref('recipes/public/');
-refRecipes.on("child_added", function (snapshot) {
-    let item = snapshot.val() ;
-    //console.log("ValRecipe: " + JSON.stringify(item) + "\n");
-    //if (!recipes.enabled) return;
-    recipes.push(item);
-});
-
-refAllSensors = db.ref('sensors/');
-refAllSensors.on("child_added", function (snapshot) {
-    let item = [];
-    item.push(snapshot.val());
-
-    //console.log("--> New Sensor: " + JSON.stringify(item) + "\n");
-
-    publicSensorFilter(allSensors, item, [{"column": "style", "value": "sensor", "extension": "configurations"},{"column": "enabled","value": true}]);
-    publicSensorFilter(allActions, item, [{"column": "style", "value": "action", "extension": "configurations"},{"column": "enabled","value": true}]);
-
-    //console.log("--> New Sensors: " + JSON.stringify(allSensors) + "\n");
-    //console.log("--> New Actions: " + JSON.stringify(allActions) + "\n");
-});
-
 // Listen for auth state changes.
 firebase.auth().onAuthStateChanged(function(user) {
     console.log('User state change detected from the Background script of the Chrome Extension:', user);
 });
 
-let userKey = process.argv.key | "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
-selectedServer = process.argv.server | "Casa";
+let userKey = process.argv.key || "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
+selectedServer = process.argv.server || "Casa";
 
 refSensors = db.ref("sensors/public/"+ userKey + "/" + selectedServer);
 
@@ -71,7 +44,6 @@ console.log("--> Waiting \n");
 
 board.on("ready", function() {
     console.log("Conectando Arduino!!");
-    console.log("Conectando Arduino!! \n");
 
     refSensors
         .on("child_added", function (snapshot){
@@ -186,11 +158,11 @@ board.on("ready", function() {
 
         });
 
-    board.loop(5000, function() {
+    /*board.loop(5000, function() {
         console.log("Testando regras\n");
 
         updateActions();
-    });
+    });*/
 
     board.on('exit', function() {
         console.log('Saindo\n');
@@ -673,7 +645,6 @@ let startLight = function (sensor) {
 
     return object;
 };
-
 let startRelay = function (sensor) {
 
     let object = new five.Relay({
@@ -701,7 +672,6 @@ let startRelay = function (sensor) {
 
     return object;
 };
-
 let startSensor = function (sensor) {
     let object = new five.Sensor({
         pin: sensor.configurations.pin,
@@ -761,16 +731,15 @@ let startSensor = function (sensor) {
     return object;
 };
 
+
 let updateAlert = function (accessType, key ,alert) {
     firebase.database().ref('alerts/' + accessType + '/' + key).set(alert)
     // console.log("Atualizando alerta:  " + key);
 };
-
 let removeAlert = function (accessType, key) {
     firebase.database().ref('alerts/' + accessType + '/'+ key).remove();
     // console.log("Removendo alerta:  " + key);
 };
-
 let updateReadings = function (reading, key) {
     // console.log("Atualizando leitura:  " + key);
     let sessionsRef = firebase.database().ref('readings/'+ key);
@@ -779,64 +748,10 @@ let updateReadings = function (reading, key) {
 
     refSensors.child(key+'/readings').update(reading);
 };
-
 let updateSensorStatus = function (access, owner, server, key, status) {
     let value = {"connected": status};
     console.log("Estado: " + value.connected + '\n');
     refAllSensors.child(access + '/'+ owner + '/'+ server + '/'+ key).update(value);
-};
-
-let updateActions = function () {
-    console.log("Executando ação:");
-
-    for (let recipe of recipes) {
-
-        if (!recipe.enabled) continue;
-
-        let action = "";
-        let performAction = false;
-
-        recipe_block: for (let item  of recipe.container) {
-            if (item.type = "sensor") {
-                for (let rule  of item.rules) {
-                    let sensor = allSensors[rule.evaluatedObjectKey]
-                    process.stdout.write(rule.evaluatedObjectKey+ '\n');
-                    process.stdout.write(JSON.stringify(sensor)+ '\n');
-
-                    if (!sensor || !sensor.connected) continue recipe_block;
-                    process.stdout.write(JSON.stringify(rule));
-                    let evaluatedRead = sensor.readings[rule.evaluatedAttribute];
-                    if (evaluatedRead == rule.expectedResult) {
-                        performAction = true;
-                    }
-                    else if (!rule.logicalOperator || rule.logicalOperator == "&&") {
-                        performAction = false;
-                        break;
-                    }
-                }
-            } else if (item.type = "container") {
-                continue;
-            } else if (item.type = "action") {
-                for (let rule  of item.rules) {
-                    if (performAction != rule.result) continue;
-                    else {
-                        recipe.severity = rule.alert.severity;
-                        if (rule.alert.activate) {
-                            recipe.startDate = Date.now();
-                            updateAlert("public", recipe.key, rule.alert)
-                        } else {
-                            recipe.releaseDate = Date.now();
-                            removeAlert("public", recipe.key);
-                        }
-                        for (let action  of rule.actions) {
-                            let sensor = allSensors[action.key];
-                            updateSensorStatus("public", sensor.owner, sensor.connectedServer, action.key, action.connected)
-                        }
-                    }
-                }
-            }
-        }
-    };
 };
 
 // helper function to keep track of pulses
@@ -853,7 +768,6 @@ let flowSignal = function (value, object) {
     object.flowrate /= object.lastFlowRateTimer;
     object.lastFlowRateTimer = 0;
 };
-
 let bindAlarm = function (object) {
     alerts[object.key].lastUpdate = {
         date: object.lastReading.x,
@@ -890,7 +804,7 @@ let bindAlarm = function (object) {
     console.log("----------------------");
 };
 
-// little helper function to get a nicely formatted date string
+// helper function to get a nicely formatted date string
 let getDateString = function() {
     var time = new Date();
     // 10800000 is (GMT-3 Montreal)
@@ -899,34 +813,5 @@ let getDateString = function() {
     return datestr;
 }
 
-let publicSensorFilter = function (output, arr, list) {
-    var akeys, bkeys, ckeys;
-    for (let item of arr) {
-        akeys = Object.keys(item);
-        for (let akey of akeys) {
-            bkeys = Object.keys(item[akey]);
-            for (let bkey of bkeys) {
-                ckeys = Object.keys(item[akey][bkey]);
-                for (let ckey of ckeys) {
-                    var push = false;
-                    for (let ind of list) {
-                        if (ind.extension) {
-                            //console.log("Item: " + JSON.stringify(item[akey][bkey][ckey]));
-                            //console.log("A: " + item[akey][bkey][ckey][ind.extension][ind.column] + " B: " + ind.value + "\n");
-                            push = (item[akey][bkey][ckey][ind.extension][ind.column] == ind.value);
-                        }else{
-                            //console.log("EA: " + item[akey][bkey][ckey][ind.column] + " B: " + ind.value + "\n");
-                            push = (item[akey][bkey][ckey][ind.column] == ind.value);
-                        }
-                        if (!push) break;
-                    }
-                    if (push) {
-                        //console.log("Item: " + ckey+ "\n");
-                        output[ckey] = item[akey][bkey][ckey];
-                    }
-                }
-            }
-        }
-    }
-};
+
 
