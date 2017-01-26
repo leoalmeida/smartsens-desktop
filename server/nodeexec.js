@@ -13,9 +13,9 @@ var config = {
 };
 
 
-let alerts=[], sensors=[], recipes=[], allSensors = {}, allActions = {}, counter;
-let refServerList, refAllSensors, selectedPort, selectedServer, selectedConnType;
-let refSensors, refAlerts, refRecipes, db;
+let alerts=[], sensors={"length":0}, counter;
+let refAllSensors, selectedPort, selectedServer, selectedConnType;
+let refSensors, refServer, refAlerts, db;
 
 firebase.initializeApp(config);
 
@@ -34,7 +34,13 @@ firebase.auth().onAuthStateChanged(function(user) {
 let userKey = process.argv.key || "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
 selectedServer = process.argv.server || "Casa";
 
-refSensors = db.ref("sensors/public/"+ userKey + "/" + selectedServer);
+let serverURL = "sensors/public/"+ userKey + "/" + selectedServer;
+
+let sensorsURL = "sensors/public/"+ userKey + "/" + selectedServer + "/sensors";
+
+refServer = db.ref(serverURL);
+
+refSensors = db.ref(sensorsURL);
 
 board = new five.Board({
     timeout: 1e5
@@ -45,96 +51,76 @@ console.log("--> Waiting \n");
 board.on("ready", function() {
     console.log("Conectando Arduino!!");
 
+    updateServerStatus(refServer, true);
+
     refSensors
         .on("child_added", function (snapshot){
-            let snapitems = snapshot.val();
+            let sensor = snapshot.val();
 
-            if (snapitems.enabled) {
+            if (snapitems.enabled){
 
-                //akeys = Object.keys(snapitems[serverID]);
+                //senskeys = Object.keys(snapitems.sensors);
 
-                //for (let key = 0; key < akeys.length; key++) {
+                //for (let key of senskeys) {
+                //let sensor = snapitems.key;
+                sensors[sensor.key] = sensor;
+                sensors.length++;
 
-                sensors[snapitems.key] = snapitems;
-
-                console.log('Sensor [' + snapitems.name + '] Encontrado!!\n');
+                console.log('Sensor [' + sensor.name + '] Encontrado!!\n');
 
                 if (!alerts) alerts = [];
 
-                alerts[snapitems.key] = {
-                    active: true,
-                    enabled: true,
-                    severity: "green",
-                    lastUpdate: {
-                        label: snapitems.label
-                    },
-                    configurations: {
-                        col: 1,
-                        row: 1,
-                        draggable: false,
-                        icon: snapitems.icon,
-                        label: snapitems.label,
-                        localization: {image: snapitems.image},
-                        pin: {color: "yellow"},
-                        sensors: [snapitems.label],
-                        type: snapitems.type,
-                        name: snapitems.name,
-                        owner: userKey,
+                console.log("Conectando sensor [" + sensor.name + "]");
 
-                    }
-                };
-
-                console.log("Conectando sensor [" + snapitems.name + "]");
-
-                if (snapitems.type == "motion") {
-                    let object = startMotion(snapitems);
+                if (sensor.type == "motion") {
+                    let object = startMotion(sensor);
                     board.repl.inject({[object.id]: object});
                 }
-                else if (snapitems.type == "led") {
-                    let object = startLed(snapitems);
+                else if (sensor.type == "led") {
+                    let object = startLed(sensor);
                     board.repl.inject({[object.id]: object});
                 }
-                else if (snapitems.type == "hygrometer") {
-                    let object = startHygrometer(snapitems);
+                else if (sensor.type == "hygrometer") {
+                    let object = startHygrometer(sensor);
                     board.repl.inject({[object.id]: object});
                 }
-                else if (snapitems.type == "flow") {
-                    let object = startFlow(snapitems, board);
+                else if (sensor.type == "flow") {
+                    let object = startFlow(sensor, board);
                     board.repl.inject({[object.id]: object});
                 }
-                else if (snapitems.type == "thermometer") {
-                    let object = startThermometer(snapitems);
+                else if (sensor.type == "thermometer") {
+                    let object = startThermometer(sensor);
                     board.repl.inject({[object.id]: object});
                 }
-                else if (snapitems.type == "light") {
-                    let object = startLight(snapitems);
+                else if (sensor.type == "light") {
+                    let object = startLight(sensor);
                     board.repl.inject({[object.id]: object});
                 }
-                else if (snapitems.type == "relay") {
-                    let object = startRelay(snapitems);
+                else if (sensor.type == "relay") {
+                    let object = startRelay(sensor);
                     board.repl.inject({[object.id]: object});
                 }
-                else if (snapitems.type == "multi") {
-                    startMulti(snapitems);
+                else if (sensor.type == "multi") {
+                    startMulti(sensor);
                 }
-                else if (snapitems.type == "sensor") {
-                    let object = startSensor(snapitems);
+                else if (sensor.type == "sensor") {
+                    let object = startSensor(sensor);
                     board.repl.inject({[object.id]: object});
                 }
 
-                if (!snapitems.connected){
-                    if (snapitems.configurations.style != "action")
-                        updateSensorStatus('public', userKey, selectedServer, snapitems.key, (snapitems.connected == true)?true:false);
+                if (!sensor.connected){
+                    if (sensor.configurations.style != "action")
+                        updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?true:false);
                 }else{
-                    if (snapitems.configurations.style == "action")
-                        updateSensorStatus('public', userKey, selectedServer, snapitems.key, (snapitems.connected == true)?true:false);
+                    if (sensor.configurations.style == "action")
+                        updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?true:false);
                 }
 
-                console.log('Sensor [' + snapitems.name + '] Habilitado!!');
+                console.log('Sensor [' + sensor.name + '] Habilitado!!');
                 //};
 
             }else{
-                console.log("Sensor [" + snapitems.name + "] bloqueado.\n");
+                console.log("Sensor [" + sensor.name + "] bloqueado.\n");
             }
 
 
@@ -174,6 +160,8 @@ board.on("ready", function() {
                     updateSensorStatus('public', userKey, selectedServer, sensors[item].key, sensors[item].connected);
                 }
             }
+
+        updateServerStatus(refServer, false);
     });
 
 });
@@ -234,12 +222,13 @@ let startMotion = function (sensor) {
         console.log("Sensor: " + object.key);
         console.log("Leitura:" + JSON.stringify(data));
 
-        alerts[object.key].lastUpdate = {
+        let lastUpdate = {
             date: Date.now(),
             unit: "",
             value: (data.detectedMotion?1:0),
             raw: data
         };
+        /*
         console.log("--> Atualizando alerta.");
         if (data.detectedMotion) {
             object.alert = true;
@@ -253,8 +242,8 @@ let startMotion = function (sensor) {
             alerts[object.key].severity = "green";
             alerts[object.key].releaseDate = Date.now();
             removeAlert("public", object.key);
-        }
-        updateReadings(alerts[object.key].lastUpdate, object.key);
+        }*/
+        updateReadings(lastUpdate, object.key);;
     });
     return object;
 };
@@ -370,14 +359,13 @@ let startHygrometer = function (sensor) {
         //console.log("  Sensor: " + object.key);
         console.log("  Humidity : " + object.scaledValue);
         //console.log("  Average: " + object.average);
-
-        alerts[object.key].lastUpdate = {
+        let lastUpdate = {
             loops: object.loops,
             unit: "%",
             value: object.scaledValue,
             raw: object.value
         };
-
+        /*
         if (object.value > object.maxval) {
             object.alert = true;
             alerts[object.key].active = true;
@@ -397,9 +385,8 @@ let startHygrometer = function (sensor) {
             alerts[object.key].releaseDate = Date.now();
             removeAlert("public", object.key);
         }
-
-        //updateReadings(object, key);
-        updateReadings(alerts[object.key].lastUpdate, object.key);
+        */
+        updateReadings(lastUpdate, object.key);
 
     });
 
@@ -447,7 +434,7 @@ let startThermometer = function (sensor) {
         //console.log("Sensor: " + object.key);
         console.log("Temp: " + celsius);
 
-        alerts[object.key].lastUpdate = {
+        let lastUpdate = {
             date: Date.now(),
             unit: "°C",
             value: celsius,
@@ -457,6 +444,7 @@ let startThermometer = function (sensor) {
                 kelvin: this.K
             }
         };
+        /*
         if (celsius > 28) {
             object.alert = true;
             alerts[object.key].active = true;
@@ -475,8 +463,8 @@ let startThermometer = function (sensor) {
             alerts[object.key].severity = "green";
             alerts[object.key].releaseDate = Date.now();
             removeAlert("public", object.key);
-        }
-        updateReadings(alerts[object.key].lastUpdate, object.key);
+        }*/
+        updateReadings(lastUpdate, object.key);
 
     });
 
@@ -540,7 +528,7 @@ let startFlow = function (sensor, board) {
      updateAlert("public", object.key, alerts[object.key]);
      }
 
-     updateReadings(alerts[object.key].lastUpdate, object.key);
+     updateReadings(lastUpdate, object.key);;
 
      object.lastval = object.lastReading.y;
 
@@ -610,14 +598,14 @@ let startLight = function (sensor) {
 
         console.log("Light: " + object.percentage);
 
-        alerts[object.key].lastUpdate = {
+        let lastUpdate = {
             date: Date.now(),
             unit: sensor.configurations.unit,
             value: object.percentage,
             raw: object.value,
             level: object.level
         };
-
+/*
         if (object.percentage > sensor.configurations.maxval) {
             object.alert = true;
             alerts[object.key].active= true;
@@ -639,8 +627,8 @@ let startLight = function (sensor) {
             alerts[object.key].updateDate = Date.now();
 
             updateAlert("public", object.key, alerts[object.key]);
-        }
-        updateReadings(alerts[object.key].lastUpdate, object.key);
+        }*/
+        updateReadings(lastUpdate, object.key);;
     });
 
     return object;
@@ -693,18 +681,19 @@ let startSensor = function (sensor) {
 
         if (!object.connected | this.scaledReadingValue == object.lastReading) return;
 
-        alerts[object.key].lastUpdate = {
+        let lastUpdate = {
             date: Date.now(),
             unit: sensor.configurations.unit,
             value: this.scaledReadingValue,
             raw: this
         };
-        alerts[object.key].lastReading = this.scaledReadingValue;
+
+        let lastReading = this.scaledReadingValue;
 
         console.log("The reading value has changed.");
 
         console.log("New reading: " + this.scaledReadingValue );
-
+        /*
         if (this.scaledReadingValue > 70) {
             object.alert = true;
             alerts[object.key].active = true;
@@ -724,14 +713,14 @@ let startSensor = function (sensor) {
             alerts[object.key].releaseDate = Date.now();
             removeAlert("public", object.key);
         }
-        updateReadings(alerts[object.key].lastUpdate, object.key);
+        */
+        updateReadings(lastUpdate, object.key);;
 
     });
 
     return object;
 };
-
-
+/*
 let updateAlert = function (accessType, key ,alert) {
     firebase.database().ref('alerts/' + accessType + '/' + key).set(alert)
     // console.log("Atualizando alerta:  " + key);
@@ -740,6 +729,7 @@ let removeAlert = function (accessType, key) {
     firebase.database().ref('alerts/' + accessType + '/'+ key).remove();
     // console.log("Removendo alerta:  " + key);
 };
+*/
 let updateReadings = function (reading, key) {
     // console.log("Atualizando leitura:  " + key);
     let sessionsRef = firebase.database().ref('readings/'+ key);
@@ -752,6 +742,11 @@ let updateSensorStatus = function (access, owner, server, key, status) {
     let value = {"connected": status};
     console.log("Estado: " + value.connected + '\n');
     refAllSensors.child(access + '/'+ owner + '/'+ server + '/'+ key).update(value);
+};
+let updateServerStatus = function (refServer, status) {
+    let value = {"connected": status};
+    console.log("Server status: " + value.connected + '\n');
+    refServer.update(value);
 };
 
 // helper function to keep track of pulses
@@ -769,7 +764,7 @@ let flowSignal = function (value, object) {
     object.lastFlowRateTimer = 0;
 };
 let bindAlarm = function (object) {
-    alerts[object.key].lastUpdate = {
+    let lastUpdate = {
         date: object.lastReading.x,
         unit: "l",
         value: parseFloat(Math.round(object.lastReading.y * 100) / 100).toFixed(2),
@@ -778,7 +773,7 @@ let bindAlarm = function (object) {
     };
     console.log("--> Atualizando alerta.");
     console.log("--> Last State:" + object.lastFlowPinState);
-    if (object.lastReading.y == object.lastval) {
+    /*if (object.lastReading.y == object.lastval) {
         object.alert = false;
         alerts[object.key].active = false;
         alerts[object.key].severity = "green";
@@ -796,9 +791,9 @@ let bindAlarm = function (object) {
         alerts[object.key].severity = "red";
         alerts[object.key].startDate = Date.now();
         updateAlert("public", object.key, alerts[object.key]);
-    }
+    }*/
 
-    updateReadings(alerts[object.key].lastUpdate, object.key);
+    updateReadings(lastUpdate, object.key);;
 
     console.log("Alerta atualizado.");
     console.log("----------------------");

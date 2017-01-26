@@ -92,19 +92,22 @@ setInterval(function () {
                 for (let rule  of item.rules) {
                     if (performAction != rule.result) continue;
                     else {
-                        recipe.severity = rule.alert.severity;
-                        if (rule.alert.activate) {
-                            recipe.startDate = Date.now();
-                            updateAlert("public", recipe.key, rule.alert)
-                        } else {
-                            recipe.releaseDate = Date.now();
-                            removeAlert("public", recipe.key);
-                        }
+                        let alert = generateAlert(rule.alert);
                         for (let action  of rule.actions) {
                             //process.stdout.write(JSON.stringify(item.key) + '\n');
                             let sensor = allActions[item.key];
+
+                            alert.lastUpdates[sensor.key] = sensor.lastUpdate;
                             //process.stdout.write(JSON.stringify(allSensors) + '\n');
                             updateSensorStatus("public", sensor.owner, sensor.connectedServer, sensor.key, action)
+                        }
+
+                        if (rule.alert.activate) {
+                            alert.startDate = Date.now();
+                            updateAlert("public", recipe.key, alert)
+                        } else {
+                            alert.releaseDate = Date.now();
+                            removeAlert("public", recipe.key);
                         }
                     }
                 }
@@ -112,6 +115,31 @@ setInterval(function () {
         }
     }
 }, 5000);
+
+
+let generateAlert = function(sensor, alertinfo) {
+    return {
+            active: true,
+            enabled: true,
+            severity: alertinfo.severity,
+            lastUpdates: {},
+            startDate: "",
+            releaseDate: "",
+            configurations: {
+                col: 1,
+                row: 1,
+                draggable: false,
+                icon: snapitems.icon,
+                label: snapitems.label,
+                localization: {image: snapitems.image},
+                pin: {color: "yellow"},
+                sensors: [snapitems.label],
+                type: snapitems.type,
+                name: snapitems.name,
+                owner: userKey,
+
+            }}
+};
 
 let publicSensorFilter = function (output, arr, list) {
     var akeys, bkeys, ckeys;
