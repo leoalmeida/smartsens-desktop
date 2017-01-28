@@ -191,9 +191,13 @@ let startMotion = function (sensor) {
     object.lastReading = object.detectedMotion;
     object.action = sensor.configurations.action;
 
-    object.toggleEnable = function (updated) {
+    object.toggleConnect = function (updated){
         //this.connected ? false : true;
         object = updated;
+    };
+
+    object.toggleEnable = function (updated){
+        object.toggleConnect(updated);
     };
 
     object.on("calibrated", function () {
@@ -292,8 +296,8 @@ let startLed = function (sensor) {
         };
     }
 
-    object.toggleEnable = function () {
-        this.toggle();
+    object.toggleEnable = function (updatedItem) {
+        object.toggleConnect(updatedItem);
     };
 
     return object;
@@ -316,9 +320,13 @@ let startHygrometer = function (sensor) {
     object.maxval = sensor.configurations.maxval;
     object.action = sensor.configurations.action;
 
-    object.toggleEnable = function (updated) {
+    object.toggleConnect = function (updated){
         //this.connected ? false : true;
         object = updated;
+    };
+
+    object.toggleEnable = function (updated){
+        object.toggleConnect(updated);
     };
 
     //let sensorPower = new five.Pin(sensor.configurations.pin);
@@ -417,10 +425,16 @@ let startThermometer = function (sensor) {
     object.connected = sensor.connected;
     object.key = sensor.key;
     object.lastReading = 0;
-    object.toggleEnable = function (updated) {
+
+    object.toggleConnect = function (updated){
         //this.connected ? false : true;
         object = updated;
     };
+
+    object.toggleEnable = function (updated){
+        object.toggleConnect(updated);
+    };
+
 
 
     object.on("change", function(data) {
@@ -492,9 +506,13 @@ let startFlow = function (sensor, board) {
     object.maxval = sensor.configurations.maxval;
     object.lastval = 0;
 
-    object.toggleEnable = function (updated) {
+    object.toggleConnect = function (updated){
         //this.connected ? false : true;
         object = updated;
+    };
+
+    object.toggleEnable = function (updated){
+        object.toggleConnect(updated);
     };
 
     /*object.on("change", function(value) {
@@ -583,9 +601,13 @@ let startLight = function (sensor) {
     object.key = sensor.key;
     object.lastReading = 0;
 
-    object.toggleEnable = function (updated) {
+    object.toggleConnect = function (updated){
         //this.connected ? false : true;
         object = updated;
+    };
+
+    object.toggleEnable = function (updated){
+        object.toggleConnect(updated);
     };
 
     object.on("change", function() {
@@ -644,19 +666,22 @@ let startRelay = function (sensor) {
     object.connected = sensor.connected;
     object[this.isOn ? "off" : "on"]();
 
-    object.toggleEnable = function (updated) {
+    object.toggleConnect = function(updatedItem) {
         //this.connected ? false : true;
         object = updated;
         this.toggle();
-        console.log("Toggle");
+        writeLog("Toggle");
 
         if (this.isOn) {
-            console.log("Relé ligado");
+            writeLog("Relé ligado");
         } else {
-            console.log("Relé desligado");
+            writeLog("Relé desligado");
         }
-    };
+    }
 
+    object.toggleEnable = function (updated) {
+        object.toggleConnect(updated)
+    };
 
     return object;
 };
@@ -670,9 +695,13 @@ let startSensor = function (sensor) {
     object.enabled = sensor.enabled;
     object.connected = sensor.connected;
     object.key = sensor.key;
-    object.toggleEnable = function (updated) {
+    object.toggleConnect = function (updated){
         //this.connected ? false : true;
         object = updated;
+    };
+
+    object.toggleEnable = function (updated){
+        object.toggleConnect(updated);
     };
 
     // Scale the sensor's data from 0-1023 to 0-10 and log changes
@@ -720,16 +749,7 @@ let startSensor = function (sensor) {
 
     return object;
 };
-/*
-let updateAlert = function (accessType, key ,alert) {
-    firebase.database().ref('alerts/' + accessType + '/' + key).set(alert)
-    // console.log("Atualizando alerta:  " + key);
-};
-let removeAlert = function (accessType, key) {
-    firebase.database().ref('alerts/' + accessType + '/'+ key).remove();
-    // console.log("Removendo alerta:  " + key);
-};
-*/
+
 let updateReadings = function (reading, key) {
     // console.log("Atualizando leitura:  " + key);
     let sessionsRef = firebase.database().ref('readings/'+ key);

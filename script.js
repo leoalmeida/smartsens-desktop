@@ -606,7 +606,7 @@ let startLed = function (sensor) {
     }
 
     object.toggleEnable = function (updatedItem) {
-        object.toggleConnect();
+        object.toggleConnect(updatedItem);
     };
 
     return object;
