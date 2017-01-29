@@ -1,4 +1,4 @@
-let firebase = require("firebase");
+﻿let firebase = require("firebase");
 let five = require("johnny-five");
 
 let board, sensor;
@@ -13,8 +13,8 @@ var config = {
 };
 
 
-let alerts=[], sensors={"length":0}, counter;
-let refAllSensors, selectedPort, selectedServer, selectedConnType;
+let alerts=[], sensors={"length":0, "connected":0}, connectedsens;
+let userKey, refAllSensors, selectedPort, selectedServer, selectedConnType;
 let refSensors, refServer, refAlerts, db;
 
 firebase.initializeApp(config);
@@ -31,23 +31,45 @@ firebase.auth().onAuthStateChanged(function(user) {
     console.log('User state change detected from the Background script of the Chrome Extension:', user);
 });
 
-let userKey = process.argv.key || "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
-selectedServer = process.argv.server || "Casa";
+
+console.log(process.argv);
+
+selectedPort = "COM6"
+userKey = "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
+selectedServer = "Central 01";
+
+if (process.argv.indexOf("-p") != -1) 
+	selectedPort = process.argv[process.argv.indexOf("-p") + 1];
+if (process.argv.indexOf("--port")!= -1)
+	selectedPort = process.argv[process.argv.indexOf("--port") + 1];
+
+if (process.argv.indexOf("-k") != -1)
+	userKey = process.argv[process.argv.indexOf("-k") + 1];
+if (process.argv.indexOf("--key")!= -1) 
+	userKey = process.argv[process.argv.indexOf("--key") + 1];
+
+if (process.argv.indexOf("-s") != -1)
+	selectedServer = process.argv[process.argv.indexOf("-s") + 1];
+if (process.argv.indexOf("--server")!= -1)
+	selectedServer = process.argv[process.argv.indexOf("--server") + 1];
 
 let serverURL = "sensors/public/"+ userKey + "/" + selectedServer;
 
 let sensorsURL = "sensors/public/"+ userKey + "/" + selectedServer + "/sensors";
+
+console.log(serverURL);
+console.log(sensorsURL);
 
 refServer = db.ref(serverURL);
 
 refSensors = db.ref(sensorsURL);
 
 board = new five.Board({
-    timeout: 1e5
+	port: selectedPort ,
+	timeout: 1e5
 });
 
 console.log("--> Waiting \n");
-
 board.on("ready", function() {
     console.log("Conectando Arduino!!");
 
@@ -57,12 +79,12 @@ board.on("ready", function() {
         .on("child_added", function (snapshot){
             let sensor = snapshot.val();
 
-            if (snapitems.enabled){
+            if (sensor.enabled){
 
-                //senskeys = Object.keys(snapitems.sensors);
+                //senskeys = Object.keys(sensor.sensors);
 
                 //for (let key of senskeys) {
-                //let sensor = snapitems.key;
+                //let sensor = sensor.key;
                 sensors[sensor.key] = sensor;
                 sensors.length++;
 
@@ -71,7 +93,7 @@ board.on("ready", function() {
                 if (!alerts) alerts = [];
 
                 console.log("Conectando sensor [" + sensor.name + "]");
-
+                
                 if (sensor.type == "motion") {
                     let object = startMotion(sensor);
                     board.repl.inject({[object.id]: object});
@@ -109,11 +131,15 @@ board.on("ready", function() {
                 }
 
                 if (!sensor.connected){
-                    if (sensor.configurations.style != "action")
-                        updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?true:false);
+                    if (sensor.configurations.style != "action"){
+                        updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?false:true);
+			sensors.connected++;
+		    }
                 }else{
                     if (sensor.configurations.style == "action")
-                        updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?true:false);
+                        updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?false:true);
+
+		    sensors.connected++;
                 }
 
                 console.log('Sensor [' + sensor.name + '] Habilitado!!');
@@ -136,9 +162,17 @@ board.on("ready", function() {
             //console.log(" Estado --> " + obj.enabled  + " | " + updatedItem.enabled);
             //console.log(" Conn --> " + obj.connected  + " | " + updatedItem.connected);
 
-            if (obj.connected != updatedItem.connected) obj.toggleConnect(updatedItem);
+            if (obj.connected != updatedItem.connected) {
+		obj.toggleConnect(updatedItem);
+		if (updatedItem.connected) sensors.connected++;
+		else sensors.connected--;
+	    }
 
-            if (obj.enabled != updatedItem.enabled) obj.toggleEnable();
+            if (obj.enabled != updatedItem.enabled) {
+		obj.toggleEnable();
+		if (!updatedItem.connected) sensors.connected++;
+		else sensors.connected--;
+	    }
 
             sensors[updatedItem.key] = updatedItem;
 
@@ -152,19 +186,44 @@ board.on("ready", function() {
 
     board.on('exit', function() {
         console.log('Saindo\n');
-        if (sensors!='undefined')
+	
+        if (sensors.connected > 0){
             for (let item of Object.keys(sensors)) {
                 //console.log('Sensor [' + sensors[item].key + '] Estado ' +sensors[item].connected+ '\n');
                 if (sensors[item].connected){
+		    connectedsens++;
                     console.log("Desconectando: " + item + '\n');
-                    updateSensorStatus('public', userKey, selectedServer, sensors[item].key, sensors[item].connected);
+                    updateSensorStatus('public', userKey, selectedServer, sensors[item].key, (sensors[item].connected == true)?false:true);
                 }
             }
-
+	}
+	
         updateServerStatus(refServer, false);
+
     });
 
 });
+
+if (process.platform === "win32"){
+	var rl = require("readline")
+		.createInterface({
+			input: process.stdin,
+			output: process.stdout
+	});
+	rl.on("SIGINT", function(){
+		if (sensors.connected > 0){
+            		for (let item of Object.keys(sensors)) {
+                		//console.log('Sensor [' + sensors[item].key + '] Estado ' +sensors[item].connected+ '\n');
+                		if (sensors[item].connected){
+                    			console.log("Desconectando: " + item + '\n');
+                    			updateSensorStatus('public', userKey, selectedServer, sensors[item].key, (sensors[item].connected == true)?false:true);
+                		}
+            		}
+		}
+        	updateServerStatus(refServer, false);
+
+	});
+}
 
 board.on("fail", function(err) {
     if (err) {
@@ -193,7 +252,7 @@ let startMotion = function (sensor) {
 
     object.toggleConnect = function (updated){
         //this.connected ? false : true;
-        object = updated;
+        object.connected = updated.connected;
     };
 
     object.toggleEnable = function (updated){
@@ -310,10 +369,10 @@ let startHygrometer = function (sensor) {
         threshold: sensor.configurations.threshold,
         id: sensor.key
     });
-    object.enabled = sensor.enabled;
+    object.enabled= sensor.enabled
     object.connected = sensor.connected;
     object.key = sensor.key;
-    object.lastReading = 0;
+    object.lastReading = -1;
     object.quantity = 0;
     object.loops = 0;
     object.value = 0;
@@ -322,39 +381,16 @@ let startHygrometer = function (sensor) {
 
     object.toggleConnect = function (updated){
         //this.connected ? false : true;
-        object = updated;
+        object.connected = updated.connected;
     };
 
     object.toggleEnable = function (updated){
         object.toggleConnect(updated);
     };
 
-    //let sensorPower = new five.Pin(sensor.configurations.pin);
-
-    /*object.on("data", function(value) {
-     //object.value = this.scaleTo(0, 100);
-     //object.value = this.value;
-     object.loops++;
-
-     //console.log("Hygrometer");
-     //console.log("  Sensor: " + object.key);
-     //console.log("  Loop: " + object.loops);
-     //console.log("  relative humidity : " + object.value);
-     if (sensorPower.isHigh){
-     let value = sensor.scaleTo(0, 100);
-     loops++;
-     // this.storedb(actualReading);
-     console.log("Hygrometer");
-     console.log("  relative humidity : " + value);
-     // console.log("Moisture: " + value);
-
-     sensorPower.low();
-     sensor.disable();
-     }
-     });*/
     object.on("change", function (){
 
-        object.scaledValue = object.scaleTo(0, 100);
+        object.scaledValue = five.Fn.toFixed(100 - object.fscaleTo(0, 100),2);
         //object.value = value;
 
         if (!object.connected | object.scaledValue == object.lastReading) return;
@@ -428,7 +464,7 @@ let startThermometer = function (sensor) {
 
     object.toggleConnect = function (updated){
         //this.connected ? false : true;
-        object = updated;
+        object.connected = updated.connected;
     };
 
     object.toggleEnable = function (updated){
@@ -508,7 +544,7 @@ let startFlow = function (sensor, board) {
 
     object.toggleConnect = function (updated){
         //this.connected ? false : true;
-        object = updated;
+        object.connected = updated.connected;
     };
 
     object.toggleEnable = function (updated){
@@ -603,7 +639,7 @@ let startLight = function (sensor) {
 
     object.toggleConnect = function (updated){
         //this.connected ? false : true;
-        object = updated;
+        object.connected = updated.connected;
     };
 
     object.toggleEnable = function (updated){
@@ -668,14 +704,14 @@ let startRelay = function (sensor) {
 
     object.toggleConnect = function(updatedItem) {
         //this.connected ? false : true;
-        object = updated;
+        object.connected = updated.connected;
         this.toggle();
-        writeLog("Toggle");
+        console.log("Toggle");
 
         if (this.isOn) {
-            writeLog("Relé ligado");
+            console.log("Relé ligado");
         } else {
-            writeLog("Relé desligado");
+            console.log("Relé desligado");
         }
     }
 
@@ -697,7 +733,7 @@ let startSensor = function (sensor) {
     object.key = sensor.key;
     object.toggleConnect = function (updated){
         //this.connected ? false : true;
-        object = updated;
+        object.connected = updated.connected;
     };
 
     object.toggleEnable = function (updated){
@@ -761,7 +797,7 @@ let updateReadings = function (reading, key) {
 let updateSensorStatus = function (access, owner, server, key, status) {
     let value = {"connected": status};
     console.log("Estado: " + value.connected + '\n');
-    refAllSensors.child(access + '/'+ owner + '/'+ server + '/'+ key).update(value);
+    refSensors.child(key).update(value);
 };
 let updateServerStatus = function (refServer, status) {
     let value = {"connected": status};
