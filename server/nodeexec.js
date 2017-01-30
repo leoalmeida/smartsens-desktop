@@ -704,8 +704,8 @@ let startRelay = function (sensor) {
 
     object.toggleConnect = function(updatedItem) {
         //this.connected ? false : true;
-        object.connected = updated.connected;
-        this.toggle();
+        object.connected = updatedItem.connected;
+        object[object.isOn ? "off" : "on"]();
         console.log("Toggle");
 
         if (this.isOn) {
