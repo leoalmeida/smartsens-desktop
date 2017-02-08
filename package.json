@@ -17,7 +17,7 @@
     "min_height": 600
   },
   "scripts": {
-    "start": "node ./server/nodeexec"
+    "start": "node ./bin/nodeexec"
   },
   "dependencies": {
     "etherport-client": "^0.1.2",

@@ -19,29 +19,43 @@ let refSensors, refServer, refAlerts, db;
 
 firebase.initializeApp(config);
 
+//userKey = "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
+user = "leoalmeida.rj@gmail.com";
+userKey = "";
+
+// Listen for auth state changes.
+firebase.auth().onAuthStateChanged(function(user) {
+    console.log('User state change detected from the Background script of the Chrome Extension:', user);
+    if (user) {
+        console.log("User is logged in");
+    } else {
+        console.log("User is not logged in");
+    }
+
+});
+
 db = firebase.database();
+
 refAlerts = db.ref('alerts/public/');
 
 refAlerts.once("value", function (snapshot) {
     alerts = snapshot.val() ;
 });
 
-// Listen for auth state changes.
-firebase.auth().onAuthStateChanged(function(user) {
-    console.log('User state change detected from the Background script of the Chrome Extension:', user);
-});
-
-
 console.log(process.argv);
 
 selectedPort = "COM6"
-userKey = "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
 selectedServer = "Central 01";
 
 if (process.argv.indexOf("-p") != -1) 
 	selectedPort = process.argv[process.argv.indexOf("-p") + 1];
 if (process.argv.indexOf("--port")!= -1)
 	selectedPort = process.argv[process.argv.indexOf("--port") + 1];
+
+if (process.argv.indexOf("-u") != -1)
+    user = process.argv[process.argv.indexOf("-u") + 1];
+if (process.argv.indexOf("--user")!= -1)
+    user = process.argv[process.argv.indexOf("--user") + 1];
 
 if (process.argv.indexOf("-k") != -1)
 	userKey = process.argv[process.argv.indexOf("-k") + 1];
@@ -53,190 +67,199 @@ if (process.argv.indexOf("-s") != -1)
 if (process.argv.indexOf("--server")!= -1)
 	selectedServer = process.argv[process.argv.indexOf("--server") + 1];
 
-let serverURL = "sensors/public/"+ userKey + "/" + selectedServer;
+db.ref('/users/').orderByChild('email').limitToFirst(1)
+                .once('child_added', function(snapshot) {
 
-let sensorsURL = "sensors/public/"+ userKey + "/" + selectedServer + "/sensors";
+    userKey = snapshot.val().uid;
+    console.log(userKey);
 
-console.log(serverURL);
-console.log(sensorsURL);
 
-refServer = db.ref(serverURL);
+    let serverURL = "sensors/public/"+ userKey + "/" + selectedServer;
 
-refSensors = db.ref(sensorsURL);
+    let sensorsURL = "sensors/public/"+ userKey + "/" + selectedServer + "/sensors";
 
-board = new five.Board({
-	port: selectedPort ,
-	timeout: 1e5
-});
+    console.log(serverURL);
+    console.log(sensorsURL);
 
-console.log("--> Waiting \n");
-board.on("ready", function() {
-    console.log("Conectando Arduino!!");
+    refServer = db.ref(serverURL);
 
-    updateServerStatus(refServer, true);
+    refSensors = db.ref(sensorsURL);
 
-    refSensors
-        .on("child_added", function (snapshot){
-            let sensor = snapshot.val();
+    board = new five.Board({
+        port: selectedPort ,
+        timeout: 1e5
+    });
 
-            if (sensor.enabled){
+    console.log("--> Waiting \n");
+    board.on("ready", function() {
+        console.log("Conectando Arduino!!");
 
-                //senskeys = Object.keys(sensor.sensors);
+        updateServerStatus(refServer, true);
 
-                //for (let key of senskeys) {
-                //let sensor = sensor.key;
-                sensors[sensor.key] = sensor;
-                sensors.length++;
+        refSensors
+            .on("child_added", function (snapshot){
+                let sensor = snapshot.val();
 
-                console.log('Sensor [' + sensor.name + '] Encontrado!!\n');
+                if (sensor.enabled){
 
-                if (!alerts) alerts = [];
+                    //senskeys = Object.keys(sensor.sensors);
 
-                console.log("Conectando sensor [" + sensor.name + "]");
-                
-                if (sensor.type == "motion") {
-                    let object = startMotion(sensor);
-                    board.repl.inject({[object.id]: object});
+                    //for (let key of senskeys) {
+                    //let sensor = sensor.key;
+                    sensors[sensor.key] = sensor;
+                    sensors.length++;
+
+                    console.log('Sensor [' + sensor.name + '] Encontrado!!\n');
+
+                    if (!alerts) alerts = [];
+
+                    console.log("Conectando sensor [" + sensor.name + "]");
+
+                    if (sensor.type == "motion") {
+                        let object = startMotion(sensor);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensor.type == "led") {
+                        let object = startLed(sensor);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensor.type == "hygrometer") {
+                        let object = startHygrometer(sensor);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensor.type == "flow") {
+                        let object = startFlow(sensor, board);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensor.type == "thermometer") {
+                        let object = startThermometer(sensor);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensor.type == "light") {
+                        let object = startLight(sensor);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensor.type == "relay") {
+                        let object = startRelay(sensor);
+                        board.repl.inject({[object.id]: object});
+                    }
+                    else if (sensor.type == "multi") {
+                        startMulti(sensor);
+                    }
+                    else if (sensor.type == "sensor") {
+                        let object = startSensor(sensor);
+                        board.repl.inject({[object.id]: object});
+                    }
+
+                    if (!sensor.connected){
+                        if (sensor.configurations.style != "action"){
+                            updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?false:true);
+                sensors.connected++;
                 }
-                else if (sensor.type == "led") {
-                    let object = startLed(sensor);
-                    board.repl.inject({[object.id]: object});
-                }
-                else if (sensor.type == "hygrometer") {
-                    let object = startHygrometer(sensor);
-                    board.repl.inject({[object.id]: object});
-                }
-                else if (sensor.type == "flow") {
-                    let object = startFlow(sensor, board);
-                    board.repl.inject({[object.id]: object});
-                }
-                else if (sensor.type == "thermometer") {
-                    let object = startThermometer(sensor);
-                    board.repl.inject({[object.id]: object});
-                }
-                else if (sensor.type == "light") {
-                    let object = startLight(sensor);
-                    board.repl.inject({[object.id]: object});
-                }
-                else if (sensor.type == "relay") {
-                    let object = startRelay(sensor);
-                    board.repl.inject({[object.id]: object});
-                }
-                else if (sensor.type == "multi") {
-                    startMulti(sensor);
-                }
-                else if (sensor.type == "sensor") {
-                    let object = startSensor(sensor);
-                    board.repl.inject({[object.id]: object});
-                }
+                    }else{
+                        if (sensor.configurations.style == "action")
+                            updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?false:true);
 
-                if (!sensor.connected){
-                    if (sensor.configurations.style != "action"){
-                        updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?false:true);
-			sensors.connected++;
-		    }
+                sensors.connected++;
+                    }
+
+                    console.log('Sensor [' + sensor.name + '] Habilitado!!');
+                    //};
+
                 }else{
-                    if (sensor.configurations.style == "action")
-                        updateSensorStatus('public', userKey, selectedServer, sensor.key, (sensor.connected == true)?false:true);
-
-		    sensors.connected++;
+                    console.log("Sensor [" + sensor.name + "] bloqueado.\n");
                 }
 
-                console.log('Sensor [' + sensor.name + '] Habilitado!!');
-                //};
 
-            }else{
-                console.log("Sensor [" + sensor.name + "] bloqueado.\n");
+            });
+        refSensors
+            .on("child_changed", function(snapshot) {
+                let updatedItem = snapshot.val();
+
+                let obj = board.repl.context[updatedItem.key];
+
+                //console.log(obj);
+                //console.log("Sensor " + updatedItem.name + " foi modificado");
+                //console.log(" Estado --> " + obj.enabled  + " | " + updatedItem.enabled);
+                //console.log(" Conn --> " + obj.connected  + " | " + updatedItem.connected);
+
+                if (obj.connected != updatedItem.connected) {
+            obj.toggleConnect(updatedItem);
+            if (updatedItem.connected) sensors.connected++;
+            else sensors.connected--;
             }
 
+                if (obj.enabled != updatedItem.enabled) {
+            obj.toggleEnable();
+            if (!updatedItem.connected) sensors.connected++;
+            else sensors.connected--;
+            }
 
-        });
-    refSensors
-        .on("child_changed", function(snapshot) {
-            let updatedItem = snapshot.val();
+                sensors[updatedItem.key] = updatedItem;
 
-            let obj = board.repl.context[updatedItem.key];
+            });
 
-            //console.log(obj);
-            //console.log("Sensor " + updatedItem.name + " foi modificado");
-            //console.log(" Estado --> " + obj.enabled  + " | " + updatedItem.enabled);
-            //console.log(" Conn --> " + obj.connected  + " | " + updatedItem.connected);
+        /*board.loop(5000, function() {
+            console.log("Testando regras\n");
 
-            if (obj.connected != updatedItem.connected) {
-		obj.toggleConnect(updatedItem);
-		if (updatedItem.connected) sensors.connected++;
-		else sensors.connected--;
-	    }
+            updateActions();
+        });*/
 
-            if (obj.enabled != updatedItem.enabled) {
-		obj.toggleEnable();
-		if (!updatedItem.connected) sensors.connected++;
-		else sensors.connected--;
-	    }
+        board.on('exit', function() {
+            console.log('Saindo\n');
 
-            sensors[updatedItem.key] = updatedItem;
-
-        });
-
-    /*board.loop(5000, function() {
-        console.log("Testando regras\n");
-
-        updateActions();
-    });*/
-
-    board.on('exit', function() {
-        console.log('Saindo\n');
-	
-        if (sensors.connected > 0){
-            for (let item of Object.keys(sensors)) {
-                //console.log('Sensor [' + sensors[item].key + '] Estado ' +sensors[item].connected+ '\n');
-                if (sensors[item].connected){
-		    connectedsens++;
-                    console.log("Desconectando: " + item + '\n');
-                    updateSensorStatus('public', userKey, selectedServer, sensors[item].key, (sensors[item].connected == true)?false:true);
+            if (sensors.connected > 0){
+                for (let item of Object.keys(sensors)) {
+                    //console.log('Sensor [' + sensors[item].key + '] Estado ' +sensors[item].connected+ '\n');
+                    if (sensors[item].connected){
+                connectedsens++;
+                        console.log("Desconectando: " + item + '\n');
+                        updateSensorStatus('public', userKey, selectedServer, sensors[item].key, (sensors[item].connected == true)?false:true);
+                    }
                 }
-            }
-	}
-	
-        updateServerStatus(refServer, false);
+        }
+
+            updateServerStatus(refServer, false);
+
+        });
 
     });
 
-});
+    if (process.platform === "win32"){
+        var rl = require("readline")
+            .createInterface({
+                input: process.stdin,
+                output: process.stdout
+        });
+        rl.on("SIGINT", function(){
+            if (sensors.connected > 0){
+                        for (let item of Object.keys(sensors)) {
+                            //console.log('Sensor [' + sensors[item].key + '] Estado ' +sensors[item].connected+ '\n');
+                            if (sensors[item].connected){
+                                    console.log("Desconectando: " + item + '\n');
+                                    updateSensorStatus('public', userKey, selectedServer, sensors[item].key, (sensors[item].connected == true)?false:true);
+                            }
+                        }
+            }
+                updateServerStatus(refServer, false);
 
-if (process.platform === "win32"){
-	var rl = require("readline")
-		.createInterface({
-			input: process.stdin,
-			output: process.stdout
-	});
-	rl.on("SIGINT", function(){
-		if (sensors.connected > 0){
-            		for (let item of Object.keys(sensors)) {
-                		//console.log('Sensor [' + sensors[item].key + '] Estado ' +sensors[item].connected+ '\n');
-                		if (sensors[item].connected){
-                    			console.log("Desconectando: " + item + '\n');
-                    			updateSensorStatus('public', userKey, selectedServer, sensors[item].key, (sensors[item].connected == true)?false:true);
-                		}
-            		}
-		}
-        	updateServerStatus(refServer, false);
-
-	});
-}
-
-board.on("fail", function(err) {
-    if (err) {
-        console.log("Erro ao conectar na porta: " + selectedPort);
-        console.log("Erro: " + JSON.stringify(err));
+        });
     }
-    setTimeout(function() {
-        console.log("Timeout ao conectar na porta: " + selectedPort);
-    }, 5000);
-});
 
-board.on("message", function(event) {
-    console.log("Received a %s message, from %s, reporting: %s", event.type, event.class, event.message);
+    board.on("fail", function(err) {
+        if (err) {
+            console.log("Erro ao conectar na porta: " + selectedPort);
+            console.log("Erro: " + JSON.stringify(err));
+        }
+        setTimeout(function() {
+            console.log("Timeout ao conectar na porta: " + selectedPort);
+        }, 5000);
+    });
+
+    board.on("message", function(event) {
+        console.log("Received a %s message, from %s, reporting: %s", event.type, event.class, event.message);
+    });
+
 });
 
 let startMotion = function (sensor) {
