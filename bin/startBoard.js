@@ -26,9 +26,7 @@ console.log(process.argv);
 
 if (process.platform === "win32")
     selectedPort = "COM6"
-else selectedPort = "/dev/ttyACM0"
-userKey = "mw7uFCeEwcTrXrgHdvRKxE5mKAJ2";
-serverID = "2";
+else selectedPort = "/dev/ttyACM0";
 
 if (process.argv.indexOf("-p") != -1)
     selectedPort = process.argv[process.argv.indexOf("-p") + 1];
